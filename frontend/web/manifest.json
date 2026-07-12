@@ -1,11 +1,11 @@
 {
-    "name": "frontend_new",
-    "short_name": "frontend_new",
+    "name": "تشخيص السيارة الذكي",
+    "short_name": "تشخيص السيارة",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F5F7FA",
+    "theme_color": "#1E3A5F",
+    "description": "تطبيق تشخيص أعطال السيارات بالذكاء الاصطناعي",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

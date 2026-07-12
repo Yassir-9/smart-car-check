@@ -20,7 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _carModel = 'كامري';
   int _carYear = 2022;
 
-  // متغيرات الصوت
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   bool _speechAvailable = false;
@@ -226,6 +225,61 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Center(
+                  child: Container(
+                    width: 110,
+                    height: 110,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF1E3A5F), Color(0xFF3B6EA5)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1E3A5F).withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Icon(Icons.directions_car_filled_rounded,
+                            size: 48, color: Colors.white),
+                        Positioned(
+                          bottom: 8,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.bolt_rounded,
+                                size: 16, color: Color(0xFFF57C00)),
+                          ),
+                        ),
+                        Positioned(
+                          top: 6,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.build_rounded,
+                                size: 14, color: Color(0xFF1E3A5F)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 InkWell(
                   onTap: _editCarDetails,
                   borderRadius: BorderRadius.circular(16),
