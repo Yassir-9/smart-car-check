@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -211,6 +212,16 @@ class _HomeScreenState extends State<HomeScreen> {
           title: const Text('تشخيص السيارة الذكي'),
           centerTitle: true,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.history),
+              tooltip: 'سجل التشخيصات',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                );
+              },
+            ),
             if (hasContent)
               IconButton(
                 icon: const Icon(Icons.refresh),
