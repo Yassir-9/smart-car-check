@@ -1,11 +1,30 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const obdCodes = require('../knowledge_base/obd_codes.json');
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+const HISTORY_FILE = path.join(__dirname, '../history.json');
+
+function readHistory() {
+  try {
+    const data = fs.readFileSync(HISTORY_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveToHistory(entry) {
+  const history = readHistory();
+  history.unshift(entry); // أحدث سجل بالأول
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+}
 
 function buildObdContext(codes) {
   if (!codes || codes.length === 0) return '';
@@ -58,11 +77,35 @@ router.post('/diagnose', async (req, res) => {
       .trim();
 
     const parsed = JSON.parse(rawText);
+
+    // حفظ تلقائي بالسجل
+    saveToHistory({
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      car: car || {},
+      description,
+      result: parsed,
+    });
+
     res.json(parsed);
   } catch (error) {
     console.error('خطأ في التشخيص:', error);
     res.status(500).json({ error: 'حدث خطأ أثناء التحليل، حاول مرة أخرى' });
   }
+});
+
+// جلب سجل الحوادث
+router.get('/history', (req, res) => {
+  const history = readHistory();
+  res.json(history);
+});
+
+// حذف سجل معيّن
+router.delete('/history/:id', (req, res) => {
+  const history = readHistory();
+  const filtered = history.filter((h) => h.id !== req.params.id);
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(filtered, null, 2));
+  res.json({ success: true });
 });
 
 module.exports = router;
