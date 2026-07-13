@@ -96,12 +96,15 @@ class _HomeScreenState extends State<HomeScreen> {
         _errorText = null;
       });
       await _speech.listen(
-        localeId: 'ar-SA',
         onResult: (result) {
           setState(() {
             _descriptionController.text = result.recognizedWords;
           });
         },
+        listenOptions: stt.SpeechListenOptions(
+          localeId: 'ar-SA',
+          partialResults: true,
+        ),
       );
     }
   }
