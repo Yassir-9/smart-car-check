@@ -471,6 +471,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildResultCard()
                 else if (!_isLoading && _errorText == null)
                   _buildEmptyState(),
+                const SizedBox(height: 20),
+                Center(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse("app-release.apk");
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.android),
+                    label: const Text("تحميل تطبيق أندرويد (نسخة تجريبية)"),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Center(
+                  child: Text(
+                    "نسخة iOS قريباً بإذن الله",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
               ],
             ),
           ),
