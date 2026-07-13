@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _speechAvailable = false;
 
   static const String backendUrl =
-      'https://fuzzy-space-goldfish-vpp5vg9rjpvv2pgp6-3000.app.github.dev/api/diagnose';
+      'https://car-ai-backend-7gpb.onrender.com/api/diagnose';
 
   @override
   void initState() {
