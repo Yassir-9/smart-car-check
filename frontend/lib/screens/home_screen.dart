@@ -475,7 +475,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Center(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      final uri = Uri.parse("app-release.apk");
+                      final uri = Uri.parse("https://yassir-9.github.io/car-ai-app/app-release.apk");
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
