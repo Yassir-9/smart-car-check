@@ -11,7 +11,7 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   static const String baseUrl =
-      'https://fuzzy-space-goldfish-vpp5vg9rjpvv2pgp6-3000.app.github.dev';
+      'https://car-ai-backend-7gpb.onrender.com';
 
   bool _isLoading = true;
   String? _errorText;

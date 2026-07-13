@@ -49257,7 +49257,7 @@ var $async$wt=B.O(function(a,b){if(a===1){p.push(b)
 s=q}for(;;)switch(s){case 0:n.ac(new B.avs(n))
 q=3
 s=6
-return B.P(B.b5Z(B.hn("https://fuzzy-space-goldfish-vpp5vg9rjpvv2pgp6-3000.app.github.dev/api/history",0,null)),$async$wt)
+return B.P(B.b5Z(B.hn("https://car-ai-backend-7gpb.onrender.com/api/history",0,null)),$async$wt)
 case 6:m=b
 if(m.b===200){l=A.bN.u4(A.aD.ed(m.w),null)
 n.ac(new B.avt(n,l))}else n.ac(new B.avu(n,m))
@@ -49293,7 +49293,7 @@ return B.P(B.aIa(new B.avp(),k,t.y),$async$w1)
 case 3:if(c!==!0){s=1
 break}p=5
 s=8
-return B.P(B.aRc(B.hn("https://fuzzy-space-goldfish-vpp5vg9rjpvv2pgp6-3000.app.github.dev/api/history/"+a,0,null)),$async$w1)
+return B.P(B.aRc(B.hn("https://car-ai-backend-7gpb.onrender.com/api/history/"+a,0,null)),$async$w1)
 case 8:m=c
 if(m.b===200||m.b===204)n.ac(new B.avq(n,a))
 else n.c.au(t.Pu).f.G3(B.aGA(null,null,null,null,null,A.ay,null,B.ce("\u062a\u0639\u0630\u0631 \u062d\u0630\u0641 \u0627\u0644\u0639\u0646\u0635\u0631",null,null,null,null,null,null),null,A.ol,null,null,null,null,null,null,null,null,null,null))
