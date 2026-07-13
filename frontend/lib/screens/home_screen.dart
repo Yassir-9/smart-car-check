@@ -2,7 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:share_plus/share_plus.dart';
+import '../models/car_model.dart';
+import '../services/car_service.dart';
 import 'history_screen.dart';
+import 'cars_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,9 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _result;
   String? _errorText;
 
-  String _carBrand = 'تويوتا';
-  String _carModel = 'كامري';
-  int _carYear = 2022;
+  CarModel? _activeCar;
 
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
@@ -32,6 +34,27 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _initSpeech();
+    _loadActiveCar();
+  }
+
+  Future<void> _loadActiveCar() async {
+    final cars = await CarService.loadCars();
+    final activeId = await CarService.getActiveCarId();
+    final car = cars.firstWhere(
+      (c) => c.id == activeId,
+      orElse: () => cars.first,
+    );
+    setState(() => _activeCar = car);
+  }
+
+  Future<void> _openCarsScreen() async {
+    final changed = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CarsScreen()),
+    );
+    if (changed == true) {
+      _loadActiveCar();
+    }
   }
 
   Future<void> _initSpeech() async {
@@ -107,64 +130,44 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _editCarDetails() async {
-    final brandController = TextEditingController(text: _carBrand);
-    final modelController = TextEditingController(text: _carModel);
-    final yearController = TextEditingController(text: _carYear.toString());
+  void _shareResult() {
+    if (_result == null) return;
+    final severity = _result!['severity'] ?? 'غير محددة';
+    final issue = _result!['possible_issue'] ?? '';
+    final explanation = _result!['explanation'] ?? '';
+    final recommendations = _result!['recommendations'] != null
+        ? List<String>.from(_result!['recommendations'])
+        : <String>[];
+    final cost = _result!['estimated_cost'];
 
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('بيانات سيارتك'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: brandController,
-              decoration: const InputDecoration(labelText: 'الشركة المصنعة'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: modelController,
-              decoration: const InputDecoration(labelText: 'الموديل'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: yearController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'سنة الصنع'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _carBrand = brandController.text.trim().isEmpty
-                    ? _carBrand
-                    : brandController.text.trim();
-                _carModel = modelController.text.trim().isEmpty
-                    ? _carModel
-                    : modelController.text.trim();
-                _carYear =
-                    int.tryParse(yearController.text.trim()) ?? _carYear;
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
-    );
+    final buffer = StringBuffer();
+    buffer.writeln('🚗 تشخيص السيارة الذكي');
+    buffer.writeln('السيارة: ${_activeCar?.label ?? ""}');
+    buffer.writeln();
+    buffer.writeln('⚠️ المشكلة المحتملة: $issue');
+    buffer.writeln('درجة الخطورة: $severity');
+    buffer.writeln();
+    buffer.writeln('التفسير:');
+    buffer.writeln(explanation);
+    if (recommendations.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('التوصيات:');
+      for (final r in recommendations) {
+        buffer.writeln('• $r');
+      }
+    }
+    if (cost != null && cost != 'null') {
+      buffer.writeln();
+      buffer.writeln('التكلفة التقديرية: $cost');
+    }
+    buffer.writeln();
+    buffer.writeln('تشخيص أولي توجيهي بالذكاء الاصطناعي، وليس بديلاً عن فحص فني معتمد.');
+
+    SharePlus.instance.share(ShareParams(text: buffer.toString()));
   }
 
   Future<void> _submitDiagnosis() async {
-    if (_descriptionController.text.trim().isEmpty) return;
+    if (_descriptionController.text.trim().isEmpty || _activeCar == null) return;
     FocusScope.of(context).unfocus();
 
     setState(() {
@@ -180,9 +183,9 @@ class _HomeScreenState extends State<HomeScreen> {
         body: jsonEncode({
           'description': _descriptionController.text.trim(),
           'car': {
-            'brand': _carBrand,
-            'model': _carModel,
-            'year': _carYear,
+            'brand': _activeCar!.brand,
+            'model': _activeCar!.model,
+            'year': _activeCar!.year,
           },
         }),
       );
@@ -292,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 InkWell(
-                  onTap: _editCarDetails,
+                  onTap: _openCarsScreen,
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
                     padding: const EdgeInsets.all(16),
@@ -326,15 +329,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               const Text('سيارتك الحالية',
                                   style: TextStyle(
                                       fontSize: 12, color: Colors.grey)),
-                              Text('$_carBrand $_carModel - $_carYear',
-                                  style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold)),
+                              Text(
+                                _activeCar?.label ?? 'اضغط لاختيار سيارة',
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold),
+                              ),
                             ],
                           ),
                         ),
-                        const Icon(Icons.edit_outlined,
-                            size: 18, color: Colors.grey),
+                        const Icon(Icons.swap_horiz_rounded,
+                            size: 20, color: Colors.grey),
                       ],
                     ),
                   ),
@@ -502,9 +507,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontSize: 17, fontWeight: FontWeight.bold),
                 ),
               ),
+              IconButton(
+                icon: const Icon(Icons.share_outlined, color: Color(0xFF1E3A5F)),
+                tooltip: 'مشاركة التشخيص',
+                onPressed: _shareResult,
+              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(

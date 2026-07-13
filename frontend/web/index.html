@@ -1,29 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="تشخيص أولي لمشاكل سيارتك بالذكاء الاصطناعي">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="frontend_new">
+  <meta name="apple-mobile-web-app-title" content="تشخيص السيارة الذكي">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
@@ -31,16 +18,76 @@
 
   <title>تشخيص السيارة الذكي</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #F5F7FA;
+    }
+    #app-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #F5F7FA;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    }
+    #app-splash .logo-circle {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1E3A5F, #3B6EA5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(30, 58, 95, 0.3);
+      margin-bottom: 20px;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    #app-splash .logo-circle svg {
+      width: 48px;
+      height: 48px;
+      fill: #FFFFFF;
+    }
+    #app-splash .app-title {
+      font-family: -apple-system, 'Segoe UI', Tahoma, sans-serif;
+      color: #1E3A5F;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+    @keyframes pulse {
+      0%   { transform: scale(1);   opacity: 1;   }
+      50%  { transform: scale(1.06); opacity: 0.85; }
+      100% { transform: scale(1);   opacity: 1;   }
+    }
+    #app-splash.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="app-splash">
+    <div class="logo-circle">
+      <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+    </div>
+    <div class="app-title">تشخيص السيارة الذكي</div>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('app-splash');
+      if (splash) {
+        splash.classList.add('fade-out');
+        setTimeout(function () { splash.remove(); }, 400);
+      }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -110,77 +110,121 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  String _formatDate(String? isoDate) {
+    if (isoDate == null) return '';
+    try {
+      final date = DateTime.parse(isoDate).toLocal();
+      final months = [
+        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+      ];
+      final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+      final period = date.hour >= 12 ? 'م' : 'ص';
+      final minute = date.minute.toString().padLeft(2, '0');
+      return '${date.day} ${months[date.month - 1]} ${date.year} - $hour:$minute $period';
+    } catch (e) {
+      return isoDate;
+    }
+  }
+
   void _showDetails(Map item) {
-    final severity = item['severity'] as String?;
+    final result = (item['result'] as Map?) ?? {};
+    final severity = result['severity'] as String?;
     final color = _severityColor(severity);
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Icon(_severityIcon(severity), color: color),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item['possible_issue'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            controller: scrollController,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(_severityIcon(severity), color: color),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        result['possible_issue'] ?? '',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('الخطورة: ${severity ?? "غير محددة"}',
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 16),
+                Text(result['explanation'] ?? '',
+                    style: const TextStyle(fontSize: 14, height: 1.6)),
+                if (result['recommendations'] != null) ...[
+                  const SizedBox(height: 12),
+                  const Text('التوصيات:',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 6),
+                  ...List<String>.from(result['recommendations']).map(
+                    (r) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.check_circle,
+                              size: 16, color: Color(0xFF1E3A5F)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                              child: Text(r,
+                                  style: const TextStyle(fontSize: 13))),
+                        ],
+                      ),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text('الخطورة: ${severity ?? "غير محددة"}',
-                    style: TextStyle(
-                        color: color,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 16),
-              Text(item['explanation'] ?? '',
-                  style: const TextStyle(fontSize: 14, height: 1.6)),
-              if (item['recommendations'] != null) ...[
-                const SizedBox(height: 12),
-                const Text('التوصيات:',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 6),
-                ...List<String>.from(item['recommendations']).map(
-                  (r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.check_circle,
-                            size: 16, color: Color(0xFF1E3A5F)),
-                        const SizedBox(width: 6),
-                        Expanded(
-                            child:
-                                Text(r, style: const TextStyle(fontSize: 13))),
-                      ],
-                    ),
+                if (result['estimated_cost'] != null &&
+                    result['estimated_cost'] != 'null') ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  Row(
+                    children: [
+                      const Icon(Icons.payments_outlined,
+                          size: 18, color: Colors.grey),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                            'التكلفة التقديرية: ${result['estimated_cost']}',
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.grey)),
+                      ),
+                    ],
                   ),
-                ),
+                ],
+                const SizedBox(height: 12),
               ],
-              const SizedBox(height: 12),
-            ],
+            ),
           ),
         ),
       ),
@@ -215,9 +259,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildItemCard(Map item) {
-    final severity = item['severity'] as String?;
+    final result = (item['result'] as Map?) ?? {};
+    final severity = result['severity'] as String?;
     final color = _severityColor(severity);
     final id = item['id'].toString();
+    final car = (item['car'] as Map?) ?? {};
+    final carLabel = car.isNotEmpty
+        ? '${car['brand'] ?? ''} ${car['model'] ?? ''} - ${car['year'] ?? ''}'
+        : null;
 
     return InkWell(
       onTap: () => _showDetails(item),
@@ -246,14 +295,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item['possible_issue'] ?? '',
+                    result['possible_issue'] ?? 'تشخيص بدون عنوان',
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+                  if (carLabel != null)
+                    Text(
+                      carLabel,
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  const SizedBox(height: 2),
                   Text(
-                    item['created_at'] ?? '',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    _formatDate(item['timestamp'] as String?),
+                    style:
+                        TextStyle(fontSize: 11, color: Colors.grey.shade500),
                   ),
                 ],
               ),
@@ -281,13 +340,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _errorText != null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(_errorText!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 14)),
-                      ),
+                  ? ListView(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 80),
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(_errorText!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 14)),
+                            ),
+                          ),
+                        ),
+                      ],
                     )
                   : _items.isEmpty
                       ? ListView(
