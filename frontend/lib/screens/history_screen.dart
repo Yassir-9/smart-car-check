@@ -16,6 +16,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = true;
   String? _errorText;
   List<dynamic> _items = [];
+  String _selectedFilter = 'الكل';
+
+  static const List<String> _filters = ['الكل', 'عالية', 'متوسطة', 'منخفضة'];
 
   @override
   void initState() {
@@ -41,6 +44,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  List<dynamic> get _filteredItems {
+    if (_selectedFilter == 'الكل') return _items;
+    return _items.where((item) {
+      final result = (item['result'] as Map?) ?? {};
+      return result['severity'] == _selectedFilter;
+    }).toList();
   }
 
   Future<void> _deleteItem(String id) async {
@@ -231,7 +242,40 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  Widget _buildFilterBar() {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _filters.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final filter = _filters[index];
+          final isSelected = filter == _selectedFilter;
+          final color = filter == 'الكل' ? const Color(0xFF1E3A5F) : _severityColor(filter);
+          return ChoiceChip(
+            label: Text(filter),
+            selected: isSelected,
+            onSelected: (_) => setState(() => _selectedFilter = filter),
+            selectedColor: color.withOpacity(0.15),
+            labelStyle: TextStyle(
+              color: isSelected ? color : Colors.grey.shade600,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 13,
+            ),
+            side: BorderSide(
+              color: isSelected ? color : Colors.grey.shade300,
+            ),
+            backgroundColor: Colors.transparent,
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
+    final noneAtAll = _items.isEmpty;
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 80),
@@ -243,12 +287,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 color: const Color(0xFF1E3A5F).withOpacity(0.06),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.history_rounded,
+              child: Icon(
+                  noneAtAll ? Icons.history_rounded : Icons.filter_alt_off_outlined,
                   size: 40, color: const Color(0xFF1E3A5F).withOpacity(0.5)),
             ),
             const SizedBox(height: 16),
             Text(
-              'لا يوجد أي تشخيصات محفوظة بعد',
+              noneAtAll
+                  ? 'لا يوجد أي تشخيصات محفوظة بعد'
+                  : 'لا يوجد تشخيصات بخطورة "$_selectedFilter"',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
@@ -275,7 +322,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.3), width: 1.5),
           boxShadow: [
@@ -329,42 +376,55 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredItems;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('سجل التشخيصات'),
         centerTitle: true,
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadHistory,
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorText != null
-                  ? ListView(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 80),
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(_errorText!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 14)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : _items.isEmpty
-                      ? ListView(
-                          children: [_buildEmptyState()],
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _items.length,
-                          itemBuilder: (context, index) =>
-                              _buildItemCard(_items[index]),
-                        ),
+        child: Column(
+          children: [
+            if (!_isLoading && _errorText == null && _items.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildFilterBar(),
+              const SizedBox(height: 8),
+            ],
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _loadHistory,
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _errorText != null
+                        ? ListView(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 80),
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: Text(_errorText!,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 14)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : filtered.isEmpty
+                            ? ListView(
+                                children: [_buildEmptyState()],
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) =>
+                                    _buildItemCard(filtered[index]),
+                              ),
+              ),
+            ),
+          ],
         ),
       ),
     );

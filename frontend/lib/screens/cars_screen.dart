@@ -10,6 +10,29 @@ class CarsScreen extends StatefulWidget {
 }
 
 class _CarsScreenState extends State<CarsScreen> {
+  static const List<String> _brands = [
+    'تويوتا',
+    'هوندا',
+    'نيسان',
+    'هيونداي',
+    'كيا',
+    'فورد',
+    'شيفروليه',
+    'مرسيدس',
+    'بي إم دبليو',
+    'أودي',
+    'لكزس',
+    'مازدا',
+    'ميتسوبيشي',
+    'جيب',
+    'جي إم سي',
+    'دودج',
+    'إنفينيتي',
+    'سوزوكي',
+    'فولكس فاجن',
+    'أخرى',
+  ];
+
   List<CarModel> _cars = [];
   String? _activeCarId;
   bool _isLoading = true;
@@ -77,60 +100,109 @@ class _CarsScreenState extends State<CarsScreen> {
   }
 
   Future<void> _addOrEditCar({CarModel? existing}) async {
-    final brandController = TextEditingController(text: existing?.brand ?? '');
+    final currentYear = DateTime.now().year;
+    final years = List<int>.generate(
+        currentYear - 1989, (i) => currentYear - i);
+
+    String selectedBrand = existing != null && _brands.contains(existing.brand)
+        ? existing.brand
+        : (existing != null ? 'أخرى' : _brands.first);
+    final customBrandController = TextEditingController(
+      text: existing != null && !_brands.contains(existing.brand)
+          ? existing.brand
+          : '',
+    );
     final modelController = TextEditingController(text: existing?.model ?? '');
-    final yearController =
-        TextEditingController(text: existing?.year.toString() ?? '');
+    int selectedYear = existing?.year ?? currentYear;
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(existing == null ? 'إضافة سيارة جديدة' : 'تعديل السيارة'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: brandController,
-              decoration: const InputDecoration(labelText: 'الشركة المصنعة'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(existing == null ? 'إضافة سيارة جديدة' : 'تعديل السيارة'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('الشركة المصنعة',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedBrand,
+                  isExpanded: true,
+                  items: _brands
+                      .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => selectedBrand = val);
+                    }
+                  },
+                ),
+                if (selectedBrand == 'أخرى') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: customBrandController,
+                    decoration: const InputDecoration(
+                        labelText: 'اكتب اسم الشركة المصنعة'),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: modelController,
+                  decoration: const InputDecoration(labelText: 'الموديل'),
+                ),
+                const SizedBox(height: 12),
+                const Text('سنة الصنع',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                DropdownButtonFormField<int>(
+                  initialValue: selectedYear,
+                  isExpanded: true,
+                  items: years
+                      .map((y) => DropdownMenuItem(
+                          value: y, child: Text(y.toString())))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => selectedYear = val);
+                    }
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: modelController,
-              decoration: const InputDecoration(labelText: 'الموديل'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: yearController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'سنة الصنع'),
+            ElevatedButton(
+              onPressed: () {
+                if (modelController.text.trim().isEmpty) return;
+                if (selectedBrand == 'أخرى' &&
+                    customBrandController.text.trim().isEmpty) {
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              child: const Text('حفظ'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (brandController.text.trim().isEmpty ||
-                  modelController.text.trim().isEmpty) {
-                return;
-              }
-              Navigator.pop(context, true);
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
       ),
     );
 
     if (result != true) return;
 
-    final brand = brandController.text.trim();
+    final brand = selectedBrand == 'أخرى'
+        ? customBrandController.text.trim()
+        : selectedBrand;
     final model = modelController.text.trim();
-    final year = int.tryParse(yearController.text.trim()) ?? 2020;
+    final year = selectedYear;
 
     if (existing != null) {
       final index = _cars.indexWhere((c) => c.id == existing.id);

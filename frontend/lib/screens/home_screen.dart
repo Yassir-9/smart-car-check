@@ -7,6 +7,7 @@ import '../models/car_model.dart';
 import '../services/car_service.dart';
 import 'history_screen.dart';
 import 'cars_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,6 +56,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (changed == true) {
       _loadActiveCar();
     }
+  }
+
+  Future<void> _openSettingsScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+    _loadActiveCar();
   }
 
   Future<void> _initSpeech() async {
@@ -207,6 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final hasContent = _result != null || _errorText != null ||
         _descriptionController.text.isNotEmpty;
+    final cardColor = Theme.of(context).cardColor;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
@@ -215,6 +225,11 @@ class _HomeScreenState extends State<HomeScreen> {
           title: const Text('تشخيص السيارة الذكي'),
           centerTitle: true,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'الإعدادات',
+              onPressed: _openSettingsScreen,
+            ),
             IconButton(
               icon: const Icon(Icons.history),
               tooltip: 'سجل التشخيصات',
@@ -300,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -478,11 +493,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildResultCard() {
     final severity = _result!['severity'] as String?;
     final color = _severityColor(severity);
+    final cardColor = Theme.of(context).cardColor;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.3), width: 1.5),
         boxShadow: [
