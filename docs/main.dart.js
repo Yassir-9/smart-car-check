@@ -49870,7 +49870,7 @@ $S:0}
 B.awb.prototype={
 $0(){var s=0,r=B.M(t.H),q
 var $async$$0=B.N(function(a,b){if(a===1)return B.J(b,r)
-for(;;)switch(s){case 0:q=B.fY("https://yassir-9.github.io/smart-car-check/app-release.apk",0,null)
+for(;;)switch(s){case 0:q=B.fY("https://car-ai-backend-7gpb.onrender.com/download/app-release.apk",0,null)
 s=4
 return B.O(B.aHZ(q),$async$$0)
 case 4:s=b?2:3
