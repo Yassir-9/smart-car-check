@@ -180,7 +180,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text('الخطورة: ${severity ?? "غير محددة"}',
@@ -258,7 +258,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             label: Text(filter),
             selected: isSelected,
             onSelected: (_) => setState(() => _selectedFilter = filter),
-            selectedColor: color.withOpacity(0.15),
+            selectedColor: color.withValues(alpha: 0.15),
             labelStyle: TextStyle(
               color: isSelected ? color : Colors.grey.shade600,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -284,12 +284,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E3A5F).withOpacity(0.06),
+                color: const Color(0xFF1E3A5F).withValues(alpha: 0.06),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                   noneAtAll ? Icons.history_rounded : Icons.filter_alt_off_outlined,
-                  size: 40, color: const Color(0xFF1E3A5F).withOpacity(0.5)),
+                  size: 40, color: const Color(0xFF1E3A5F).withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 16),
             Text(
@@ -324,10 +324,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

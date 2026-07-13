@@ -8,6 +8,7 @@ import '../services/car_service.dart';
 import 'history_screen.dart';
 import 'cars_screen.dart';
 import 'settings_screen.dart';
+import '../services/pdf_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -139,6 +140,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _exportPdf() async {
+    if (_result == null) return;
+    await PdfService.shareDiagnosisPdf(
+      result: _result!,
+      car: _activeCar,
+      description: _descriptionController.text.trim(),
+    );
+  }
+
   void _shareResult() {
     if (_result == null) return;
     final severity = _result!['severity'] ?? 'غير محددة';
@@ -268,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1E3A5F).withOpacity(0.3),
+                          color: const Color(0xFF1E3A5F).withValues(alpha: 0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -319,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -330,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E3A5F).withOpacity(0.1),
+                            color: const Color(0xFF1E3A5F).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.directions_car_filled,
@@ -473,11 +483,11 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E3A5F).withOpacity(0.06),
+              color: const Color(0xFF1E3A5F).withValues(alpha: 0.06),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.search_rounded,
-                size: 40, color: const Color(0xFF1E3A5F).withOpacity(0.5)),
+                size: 40, color: const Color(0xFF1E3A5F).withValues(alpha: 0.5)),
           ),
           const SizedBox(height: 16),
           Text(
@@ -500,10 +510,10 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -528,13 +538,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: 'مشاركة التشخيص',
                 onPressed: _shareResult,
               ),
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFF1E3A5F)),
+                tooltip: 'تصدير PDF',
+                onPressed: _exportPdf,
+              ),
             ],
           ),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text('الخطورة: ${severity ?? "غير محددة"}',
