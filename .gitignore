@@ -12,3 +12,6 @@ frontend/.packages
 
 # General
 .DS_Store
+smart-car-check.keystore
+smart-car-check-keystore.zip
+*.keystore
