@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "partName": "مفصل سيور CV Joint أيسر",
+    "carBrand": "نيسان",
+    "carModel": "ماكسيما",
+    "price": "450",
+    "sellerPhone": "0500000000",
+    "notes": "قطعة مستعملة بحالة ممتازة",
+    "createdAt": "2026-07-01T00:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "partName": "حامل مساند خلفي",
+    "carBrand": "تويوتا",
+    "carModel": "كامري",
+    "price": "300",
+    "sellerPhone": "0511111111",
+    "notes": "",
+    "createdAt": "2026-07-01T00:00:00.000Z"
+  }
+]
