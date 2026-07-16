@@ -97,6 +97,42 @@ async function searchPartOnline(possibleIssue, car) {
   }
 }
 
+function findSimilarConfirmedCases(description, carBrand) {
+  if (!description) return '';
+  const stopWords = ['في', 'من', 'إلى', 'أو', 'مع', 'عن', 'هذا', 'هذه', 'قد'];
+  const keywords = description
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ''))
+    .filter((w) => w.length >= 3 && !stopWords.includes(w));
+
+  const history = readHistory();
+  const confirmed = history.filter((h) => h.feedback && h.feedback.accurate === true);
+
+  const scored = confirmed
+    .map((h) => {
+      let score = 0;
+      keywords.forEach((k) => {
+        if (h.description && h.description.includes(k)) score += 1;
+        if (h.result?.possible_issue && h.result.possible_issue.includes(k)) score += 1;
+      });
+      return { entry: h, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  if (scored.length === 0) return '';
+
+  const lines = scored
+    .map(
+      (x) =>
+        `- وصف مشابه: "${x.entry.description}" → تم تأكيد إن التشخيص الصحيح كان: ${x.entry.result?.possible_issue}`
+    )
+    .join('\n');
+
+  return `\n\nملاحظة: عندنا حالات مشابهة سابقة أكّد مستخدمون دقة تشخيصها، استفد منها كمرجع إضافي (لا تنسخها حرفياً، فقط استرشد بها):\n${lines}`;
+}
+
 function buildObdContext(codes) {
   if (!codes || codes.length === 0) return '';
   const details = codes
@@ -130,8 +166,10 @@ router.post('/diagnose', async (req, res) => {
 }
 هذا تشخيص أولي توجيهي فقط وليس بديلاً عن فحص فني متخصص، وضّح ذلك ضمن الشرح لو كانت الحالة تستدعي زيارة ورشة فوراً.`;
 
+    const similarCasesContext = findSimilarConfirmedCases(description, car?.brand);
+
     const userMessage = `سيارة المستخدم: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}
-وصف المشكلة: ${description}${obdContext}`;
+وصف المشكلة: ${description}${obdContext}${similarCasesContext}`;
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
@@ -155,13 +193,16 @@ router.post('/diagnose', async (req, res) => {
     }
 
     // حفظ تلقائي بالسجل
+    const historyId = Date.now().toString();
     saveToHistory({
-      id: Date.now().toString(),
+      id: historyId,
       timestamp: new Date().toISOString(),
       car: car || {},
       description,
       result: parsed,
     });
+
+    parsed.diagnosis_id = historyId;
 
     res.json(parsed);
   } catch (error) {
@@ -181,6 +222,22 @@ router.delete('/history/:id', (req, res) => {
   const history = readHistory();
   const filtered = history.filter((h) => h.id !== req.params.id);
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(filtered, null, 2));
+  res.json({ success: true });
+});
+
+// تسجيل تقييم دقة التشخيص (يستخدم لتحسين النتائج المستقبلية)
+router.patch('/history/:id/feedback', (req, res) => {
+  const { accurate } = req.body;
+  const history = readHistory();
+  const index = history.findIndex((h) => h.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'السجل غير موجود' });
+  }
+  history[index].feedback = {
+    accurate: !!accurate,
+    ratedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
   res.json({ success: true });
 });
 
