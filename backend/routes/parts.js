@@ -31,7 +31,7 @@ router.get('/parts', (req, res) => {
 });
 
 router.post('/parts', verifyToken, (req, res) => {
-  const { partName, carBrand, carModel, price, sellerPhone, notes } = req.body;
+  const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
   if (!partName || !carBrand || !sellerPhone) {
     return res
       .status(400)
@@ -47,6 +47,8 @@ router.post('/parts', verifyToken, (req, res) => {
     price: price || null,
     sellerPhone,
     notes: notes || '',
+    oemNumber: oemNumber || null,
+    imageBase64: imageBase64 || null,
     createdAt: new Date().toISOString(),
   };
   parts.unshift(newPart);
@@ -78,7 +80,7 @@ router.put('/parts/:id', verifyToken, (req, res) => {
   if (part.ownerId && part.ownerId !== req.uid) {
     return res.status(403).json({ error: 'لا تملك صلاحية تعديل هذه القطعة' });
   }
-  const { partName, carBrand, carModel, price, sellerPhone, notes } = req.body;
+  const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
   if (!partName || !carBrand || !sellerPhone) {
     return res
       .status(400)
@@ -93,6 +95,8 @@ router.put('/parts/:id', verifyToken, (req, res) => {
     price: price || null,
     sellerPhone,
     notes: notes || '',
+    oemNumber: oemNumber !== undefined ? oemNumber : part.oemNumber || null,
+    imageBase64: imageBase64 !== undefined ? imageBase64 : part.imageBase64 || null,
   };
   saveParts(parts);
   res.json(parts[index]);
