@@ -147,10 +147,10 @@ function buildObdContext(codes) {
 
 router.post('/diagnose', async (req, res) => {
   try {
-    const { description, car, obd_codes } = req.body;
+    const { description, car, obd_codes, image } = req.body;
 
-    if (!description) {
-      return res.status(400).json({ error: 'الوصف مطلوب' });
+    if (!description && !image) {
+      return res.status(400).json({ error: 'الوصف أو الصورة مطلوبة' });
     }
 
     const obdContext = buildObdContext(obd_codes);
@@ -164,18 +164,32 @@ router.post('/diagnose', async (req, res) => {
   "recommendations": ["توصية 1", "توصية 2"],
   "estimated_cost": "نطاق تقديري بالريال السعودي أو null"
 }
+إذا كانت الصورة تحتوي على شاشة جهاز فحص فيها أكواد أعطال (DTC codes)، اقرأ الأكواد الظاهرة بدقة واستخدمها بالتشخيص. إذا كانت صورة للوحة العدادات أو لمبة تحذير، صف ما تراه ووضّح دلالته.
 هذا تشخيص أولي توجيهي فقط وليس بديلاً عن فحص فني متخصص، وضّح ذلك ضمن الشرح لو كانت الحالة تستدعي زيارة ورشة فوراً.`;
 
     const similarCasesContext = findSimilarConfirmedCases(description, car?.brand);
 
-    const userMessage = `سيارة المستخدم: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}
-وصف المشكلة: ${description}${obdContext}${similarCasesContext}`;
+    const userText = `سيارة المستخدم: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}
+وصف المشكلة: ${description || 'لم يكتب المستخدم وصفاً نصياً، اعتمد على تحليل الصورة المرفقة بالكامل'}${obdContext}${similarCasesContext}`;
+
+    const userContent = [];
+    if (image?.data) {
+      userContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: image.media_type || 'image/jpeg',
+          data: image.data,
+        },
+      });
+    }
+    userContent.push({ type: 'text', text: userText });
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [{ role: 'user', content: userContent }],
     });
 
     const rawText = response.content
@@ -198,7 +212,7 @@ router.post('/diagnose', async (req, res) => {
       id: historyId,
       timestamp: new Date().toISOString(),
       car: car || {},
-      description,
+      description: description || '(تشخيص بالصورة فقط)',
       result: parsed,
     });
 
