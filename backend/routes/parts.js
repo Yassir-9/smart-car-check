@@ -68,4 +68,34 @@ router.delete('/parts/:id', verifyToken, (req, res) => {
   res.json({ success: true });
 });
 
+router.put('/parts/:id', verifyToken, (req, res) => {
+  const parts = readParts();
+  const index = parts.findIndex((p) => p.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'القطعة غير موجودة' });
+  }
+  const part = parts[index];
+  if (part.ownerId && part.ownerId !== req.uid) {
+    return res.status(403).json({ error: 'لا تملك صلاحية تعديل هذه القطعة' });
+  }
+  const { partName, carBrand, carModel, price, sellerPhone, notes } = req.body;
+  if (!partName || !carBrand || !sellerPhone) {
+    return res
+      .status(400)
+      .json({ error: 'اسم القطعة والشركة ورقم الجوال مطلوبة' });
+  }
+  parts[index] = {
+    ...part,
+    ownerId: part.ownerId || req.uid,
+    partName,
+    carBrand,
+    carModel: carModel || '',
+    price: price || null,
+    sellerPhone,
+    notes: notes || '',
+  };
+  saveParts(parts);
+  res.json(parts[index]);
+});
+
 module.exports = router;
