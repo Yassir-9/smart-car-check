@@ -63,6 +63,40 @@ function findMatchingParts(possibleIssue, carBrand) {
   return scored;
 }
 
+async function searchPartOnline(possibleIssue, car) {
+  try {
+    const query = `${car?.brand || ''} ${car?.model || ''} ${car?.year || ''} ${possibleIssue}`;
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      system: `أنت مساعد يبحث عن قطع غيار سيارات في الإنترنت للسوق السعودي.
+ابحث عن القطعة المطلوبة وأرجع النتيجة فقط ككائن JSON صحيح بدون أي نص قبله أو بعده وبدون علامات markdown، بالشكل التالي بالضبط:
+{
+  "found": true أو false,
+  "suggestions": [
+    {"name": "اسم القطعة", "estimated_price": "نطاق تقديري بالريال أو null", "store_name": "اسم المتجر أو الوكيل"}
+  ],
+  "summary": "جملة قصيرة توضح أفضل مكان للشراء"
+}
+لو ما لقيت نتائج واضحة أرجع found:false وsuggestions فاضية.`,
+      messages: [{ role: 'user', content: `ابحث عن قطعة غيار: ${query}` }],
+    });
+
+    const rawText = response.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('\n')
+      .replace(/```json|```/g, '')
+      .trim();
+
+    return JSON.parse(rawText);
+  } catch (e) {
+    console.error('خطأ بالبحث الخارجي:', e);
+    return { found: false, suggestions: [], summary: null };
+  }
+}
+
 function buildObdContext(codes) {
   if (!codes || codes.length === 0) return '';
   const details = codes
@@ -115,6 +149,10 @@ router.post('/diagnose', async (req, res) => {
 
     const parsed = JSON.parse(rawText);
     parsed.matched_parts = findMatchingParts(parsed.possible_issue, car?.brand);
+
+    if (parsed.matched_parts.length === 0) {
+      parsed.external_search = await searchPartOnline(parsed.possible_issue, car);
+    }
 
     // حفظ تلقائي بالسجل
     saveToHistory({
