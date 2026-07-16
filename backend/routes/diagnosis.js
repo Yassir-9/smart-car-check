@@ -26,6 +26,42 @@ function saveToHistory(entry) {
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 }
 
+const PARTS_FILE = path.join(__dirname, '../parts.json');
+
+function readParts() {
+  try {
+    return JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8'));
+  } catch (e) {
+    return [];
+  }
+}
+
+function findMatchingParts(possibleIssue, carBrand) {
+  if (!possibleIssue) return [];
+  const stopWords = ['في', 'من', 'إلى', 'أو', 'مع', 'عن', 'هذا', 'هذه', 'قد'];
+  const keywords = possibleIssue
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ''))
+    .filter((w) => w.length >= 3 && !stopWords.includes(w));
+
+  const parts = readParts();
+  const scored = parts
+    .map((p) => {
+      let score = 0;
+      keywords.forEach((k) => {
+        if (p.partName && p.partName.includes(k)) score += 1;
+      });
+      if (carBrand && p.carBrand === carBrand) score += 0.5;
+      return { part: p, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((x) => x.part);
+
+  return scored;
+}
+
 function buildObdContext(codes) {
   if (!codes || codes.length === 0) return '';
   const details = codes
@@ -77,6 +113,7 @@ router.post('/diagnose', async (req, res) => {
       .trim();
 
     const parsed = JSON.parse(rawText);
+    parsed.matched_parts = findMatchingParts(parsed.possible_issue, car?.brand);
 
     // حفظ تلقائي بالسجل
     saveToHistory({
