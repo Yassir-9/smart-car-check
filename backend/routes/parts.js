@@ -60,7 +60,7 @@ router.delete('/parts/:id', verifyToken, (req, res) => {
   if (!part) {
     return res.status(404).json({ error: 'القطعة غير موجودة' });
   }
-  if (part.ownerId !== req.uid) {
+  if (part.ownerId && part.ownerId !== req.uid) {
     return res.status(403).json({ error: 'لا تملك صلاحية حذف هذه القطعة' });
   }
   const filtered = parts.filter((p) => p.id !== req.params.id);
