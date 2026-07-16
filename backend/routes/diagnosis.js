@@ -47,14 +47,15 @@ function findMatchingParts(possibleIssue, carBrand) {
   const parts = readParts();
   const scored = parts
     .map((p) => {
-      let score = 0;
+      let keywordScore = 0;
       keywords.forEach((k) => {
-        if (p.partName && p.partName.includes(k)) score += 1;
+        if (p.partName && p.partName.includes(k)) keywordScore += 1;
       });
-      if (carBrand && p.carBrand === carBrand) score += 0.5;
-      return { part: p, score };
+      let score = keywordScore;
+      if (keywordScore > 0 && carBrand && p.carBrand === carBrand) score += 0.5;
+      return { part: p, score, keywordScore };
     })
-    .filter((x) => x.score > 0)
+    .filter((x) => x.keywordScore > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
     .map((x) => x.part);
