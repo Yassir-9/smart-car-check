@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const verifyToken = require('../middleware/auth');
 
 const PARTS_FILE = path.join(__dirname, '../parts.json');
 
@@ -17,7 +18,6 @@ function saveParts(parts) {
   fs.writeFileSync(PARTS_FILE, JSON.stringify(parts, null, 2));
 }
 
-// جلب القطع (مع فلترة اختيارية بالشركة/الموديل)
 router.get('/parts', (req, res) => {
   const { brand, model } = req.query;
   let parts = readParts();
@@ -30,8 +30,7 @@ router.get('/parts', (req, res) => {
   res.json(parts);
 });
 
-// إضافة قطعة جديدة (بدون تسجيل دخول، برقم جوال للتواصل)
-router.post('/parts', (req, res) => {
+router.post('/parts', verifyToken, (req, res) => {
   const { partName, carBrand, carModel, price, sellerPhone, notes } = req.body;
   if (!partName || !carBrand || !sellerPhone) {
     return res
@@ -41,6 +40,7 @@ router.post('/parts', (req, res) => {
   const parts = readParts();
   const newPart = {
     id: Date.now().toString(),
+    ownerId: req.uid,
     partName,
     carBrand,
     carModel: carModel || '',
@@ -54,9 +54,15 @@ router.post('/parts', (req, res) => {
   res.json(newPart);
 });
 
-// حذف قطعة
-router.delete('/parts/:id', (req, res) => {
+router.delete('/parts/:id', verifyToken, (req, res) => {
   const parts = readParts();
+  const part = parts.find((p) => p.id === req.params.id);
+  if (!part) {
+    return res.status(404).json({ error: 'القطعة غير موجودة' });
+  }
+  if (part.ownerId !== req.uid) {
+    return res.status(403).json({ error: 'لا تملك صلاحية حذف هذه القطعة' });
+  }
   const filtered = parts.filter((p) => p.id !== req.params.id);
   saveParts(filtered);
   res.json({ success: true });
