@@ -4,10 +4,42 @@ const fs = require('fs');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const obdCodes = require('../knowledge_base/obd_codes.json');
+const verifyToken = require('../middleware/auth');
+const { db } = require('../firebaseAdmin');
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+const FREE_MONTHLY_LIMIT = 5;
+
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function checkAndTrackUsage(uid) {
+  const subDoc = await db.collection('users').doc(uid)
+    .collection('subscription').doc('current').get();
+  const sub = subDoc.exists ? subDoc.data() : null;
+  const isActive = sub && sub.status === 'active' &&
+    new Date(sub.currentPeriodEnd) > new Date();
+
+  if (isActive) {
+    return { allowed: true, isActive: true };
+  }
+
+  const monthKey = currentMonthKey();
+  const usageRef = db.collection('users').doc(uid).collection('usage').doc(monthKey);
+  const usageDoc = await usageRef.get();
+  const currentCount = usageDoc.exists ? (usageDoc.data().diagnosisCount || 0) : 0;
+
+  if (currentCount >= FREE_MONTHLY_LIMIT) {
+    return { allowed: false, isActive: false, usageCount: currentCount };
+  }
+
+  return { allowed: true, isActive: false, usageRef, usageCount: currentCount };
+}
 
 const HISTORY_FILE = path.join(__dirname, '../history.json');
 
@@ -145,12 +177,21 @@ function buildObdContext(codes) {
   return `\n\nمعلومات أكواد الأعطال المقروءة من جهاز الفحص:\n${details}`;
 }
 
-router.post('/diagnose', async (req, res) => {
+router.post('/diagnose', verifyToken, async (req, res) => {
   try {
     const { description, car, obd_codes, image } = req.body;
 
     if (!description && !image) {
       return res.status(400).json({ error: 'الوصف أو الصورة مطلوبة' });
+    }
+
+    const usageCheck = await checkAndTrackUsage(req.uid);
+    if (!usageCheck.allowed) {
+      return res.status(402).json({
+        error: 'استنفدت عدد التشخيصات المجانية لهذا الشهر',
+        subscriptionRequired: true,
+        freeUsageLimit: FREE_MONTHLY_LIMIT,
+      });
     }
 
     const obdContext = buildObdContext(obd_codes);
@@ -217,6 +258,13 @@ router.post('/diagnose', async (req, res) => {
     });
 
     parsed.diagnosis_id = historyId;
+
+    if (!usageCheck.isActive && usageCheck.usageRef) {
+      await usageCheck.usageRef.set(
+        { diagnosisCount: (usageCheck.usageCount || 0) + 1 },
+        { merge: true }
+      );
+    }
 
     res.json(parsed);
   } catch (error) {
