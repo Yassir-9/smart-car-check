@@ -7,8 +7,8 @@ const MOYASAR_BASE = 'https://api.moyasar.com/v1';
 const BACKEND_URL = 'https://car-ai-backend-7gpb.onrender.com';
 
 const PLANS = {
-  monthly: { amount: 1999, description: 'اشتراك شهري - تشخيص السيارة الذكي' },
-  yearly: { amount: 9900, description: 'اشتراك سنوي - تشخيص السيارة الذكي' },
+  monthly: { amount: 2900, description: 'اشتراك شهري - تشخيص السيارة الذكي' },
+  yearly: { amount: 24900, description: 'اشتراك سنوي - تشخيص السيارة الذكي' },
 };
 
 function authHeader() {
