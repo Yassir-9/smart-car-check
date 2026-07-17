@@ -75,7 +75,7 @@ async function searchPartOnline(possibleIssue, car) {
 {
   "found": true أو false,
   "suggestions": [
-    {"name": "اسم القطعة", "estimated_price": "نطاق تقديري بالريال أو null", "store_name": "اسم المتجر أو الوكيل"}
+    {"name": "اسم القطعة", "estimated_price": "نطاق تقديري بالريال أو null", "store_name": "اسم المتجر أو الوكيل", "url": "الرابط المباشر الكامل للصفحة أو المنتج، أو null لو غير متوفر"}
   ],
   "summary": "جملة قصيرة توضح أفضل مكان للشراء"
 }
