@@ -150,6 +150,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String _severityEmoji(String? severity) {
+    switch (severity) {
+      case 'عالية':
+        return '🔴';
+      case 'متوسطة':
+        return '🟠';
+      case 'منخفضة':
+        return '🟢';
+      default:
+        return '⚪';
+    }
+  }
+
   void _resetForm() {
     setState(() {
       _descriptionController.clear();
@@ -832,7 +845,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text('الخطورة: ${severity ?? "غير محددة"}',
+            child: Text('${_severityEmoji(severity)} الخطورة: ${severity ?? "غير محددة"}',
                 style: TextStyle(
                     color: color, fontSize: 12, fontWeight: FontWeight.bold)),
           ),
