@@ -392,34 +392,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
-                    _buildNavItem(
-                      icon: Icons.workspace_premium_outlined,
-                      label: 'الاشتراك',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const SubscriptionScreen()),
-                        );
-                      },
-                    ),
-                    _buildNavItem(
-                      icon: Icons.settings_outlined,
-                      label: 'الإعدادات',
-                      onTap: _openSettingsScreen,
-                    ),
-                    _buildNavItem(
-                      icon: Icons.history,
-                      label: 'السجل',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const HistoryScreen()),
-                        );
-                      },
-                    ),
+                    if (_activeCar != null)
+                      _buildNavItem(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'سجل السيارة',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    MaintenanceHistoryScreen(
+                                        car: _activeCar!)),
+                          );
+                        },
+                      ),
                     _buildNavItem(
                       icon: Icons.build_circle_outlined,
                       label: 'الصيانة',
@@ -443,20 +429,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
-                    if (_activeCar != null)
-                      _buildNavItem(
-                        icon: Icons.receipt_long_outlined,
-                        label: 'سجل السيارة',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    MaintenanceHistoryScreen(
-                                        car: _activeCar!)),
-                          );
-                        },
-                      ),
                     _buildNavItem(
                       icon: Icons.bluetooth,
                       label: 'OBD',
@@ -468,6 +440,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const ObdConnectScreen()),
                         );
                       },
+                    ),
+                    _buildNavItem(
+                      icon: Icons.history,
+                      label: 'السجل',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const HistoryScreen()),
+                        );
+                      },
+                    ),
+                    _buildNavItem(
+                      icon: Icons.workspace_premium_outlined,
+                      label: 'الاشتراك',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const SubscriptionScreen()),
+                        );
+                      },
+                    ),
+                    _buildNavItem(
+                      icon: Icons.settings_outlined,
+                      label: 'الإعدادات',
+                      onTap: _openSettingsScreen,
                     ),
                 ],
               ),
