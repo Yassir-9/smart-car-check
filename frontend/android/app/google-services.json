@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "674177309544",
+    "project_id": "smart-car-check-b32aa",
+    "storage_bucket": "smart-car-check-b32aa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:674177309544:android:46a97938f919083750d4dd",
+        "android_client_info": {
+          "package_name": "com.example.car_ai_diagnosis"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCklKKiRRQWZWlIsSOQTOxCXCnF9T8G2aA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

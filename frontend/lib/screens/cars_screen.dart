@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/car_model.dart';
 import '../services/car_service.dart';
+import '../data/car_models_data.dart';
+import '../models/maintenance_reminder.dart';
+import '../services/maintenance_service.dart';
 
 class CarsScreen extends StatefulWidget {
   const CarsScreen({super.key});
@@ -112,8 +115,25 @@ class _CarsScreenState extends State<CarsScreen> {
           ? existing.brand
           : '',
     );
-    final modelController = TextEditingController(text: existing?.model ?? '');
+    final brandModelsInit =
+        CarModelsData.modelsByBrand[selectedBrand] ?? const <String>[];
+    String selectedModel = existing != null && brandModelsInit.contains(existing.model)
+        ? existing.model
+        : 'أخرى';
+    final modelController = TextEditingController(
+      text: existing != null && !brandModelsInit.contains(existing.model)
+          ? existing.model
+          : '',
+    );
     int selectedYear = existing?.year ?? currentYear;
+    final vinController = TextEditingController(text: existing?.vin ?? '');
+    final engineController =
+        TextEditingController(text: existing?.engineType ?? '');
+    final transmissionController =
+        TextEditingController(text: existing?.transmissionType ?? '');
+    DateTime? insuranceExpiry = existing?.insuranceExpiry;
+    DateTime? registrationExpiry = existing?.registrationExpiry;
+    DateTime? inspectionExpiry = existing?.inspectionExpiry;
 
     final result = await showDialog<bool>(
       context: context,
@@ -151,10 +171,50 @@ class _CarsScreenState extends State<CarsScreen> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                TextField(
-                  controller: modelController,
-                  decoration: const InputDecoration(labelText: 'الموديل'),
-                ),
+                const Text('الموديل',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                Builder(builder: (context) {
+                  final models =
+                      CarModelsData.modelsByBrand[selectedBrand] ?? const <String>[];
+                  if (models.isEmpty) {
+                    return TextField(
+                      controller: modelController,
+                      decoration:
+                          const InputDecoration(labelText: 'اكتب اسم الموديل'),
+                    );
+                  }
+                  final dropdownItems = [...models, 'أخرى'];
+                  if (!dropdownItems.contains(selectedModel)) {
+                    selectedModel = dropdownItems.first;
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedModel,
+                        isExpanded: true,
+                        items: dropdownItems
+                            .map((m) =>
+                                DropdownMenuItem(value: m, child: Text(m)))
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedModel = val);
+                          }
+                        },
+                      ),
+                      if (selectedModel == 'أخرى') ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: modelController,
+                          decoration: const InputDecoration(
+                              labelText: 'اكتب اسم الموديل'),
+                        ),
+                      ],
+                    ],
+                  );
+                }),
                 const SizedBox(height: 12),
                 const Text('سنة الصنع',
                     style: TextStyle(fontSize: 12, color: Colors.grey)),
@@ -172,6 +232,45 @@ class _CarsScreenState extends State<CarsScreen> {
                     }
                   },
                 ),
+                const SizedBox(height: 16),
+                const Text('رقم الهيكل VIN (اختياري)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                TextField(controller: vinController),
+                const SizedBox(height: 12),
+                const Text('نوع المحرك (اختياري)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                TextField(controller: engineController),
+                const SizedBox(height: 12),
+                const Text('نوع القير (اختياري)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                TextField(controller: transmissionController),
+                const SizedBox(height: 16),
+                _buildExpiryDateRow(
+                  label: 'انتهاء الاستمارة',
+                  value: registrationExpiry,
+                  context: context,
+                  onChanged: (d) =>
+                      setDialogState(() => registrationExpiry = d),
+                ),
+                const SizedBox(height: 12),
+                _buildExpiryDateRow(
+                  label: 'انتهاء التأمين',
+                  value: insuranceExpiry,
+                  context: context,
+                  onChanged: (d) =>
+                      setDialogState(() => insuranceExpiry = d),
+                ),
+                const SizedBox(height: 12),
+                _buildExpiryDateRow(
+                  label: 'انتهاء الفحص الدوري',
+                  value: inspectionExpiry,
+                  context: context,
+                  onChanged: (d) =>
+                      setDialogState(() => inspectionExpiry = d),
+                ),
               ],
             ),
           ),
@@ -182,7 +281,14 @@ class _CarsScreenState extends State<CarsScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (modelController.text.trim().isEmpty) return;
+                final modelsForBrand =
+                    CarModelsData.modelsByBrand[selectedBrand] ?? const <String>[];
+                final modelValue = modelsForBrand.isEmpty
+                    ? modelController.text.trim()
+                    : (selectedModel == 'أخرى'
+                        ? modelController.text.trim()
+                        : selectedModel);
+                if (modelValue.isEmpty) return;
                 if (selectedBrand == 'أخرى' &&
                     customBrandController.text.trim().isEmpty) {
                   return;
@@ -201,28 +307,108 @@ class _CarsScreenState extends State<CarsScreen> {
     final brand = selectedBrand == 'أخرى'
         ? customBrandController.text.trim()
         : selectedBrand;
-    final model = modelController.text.trim();
+    final brandModelsFinal =
+        CarModelsData.modelsByBrand[selectedBrand] ?? const <String>[];
+    final model = brandModelsFinal.isEmpty
+        ? modelController.text.trim()
+        : (selectedModel == 'أخرى'
+            ? modelController.text.trim()
+            : selectedModel);
     final year = selectedYear;
+
+    final savedCar = CarModel(
+      id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      brand: brand,
+      model: model,
+      year: year,
+      vin: vinController.text.trim().isEmpty ? null : vinController.text.trim(),
+      engineType: engineController.text.trim().isEmpty
+          ? null
+          : engineController.text.trim(),
+      transmissionType: transmissionController.text.trim().isEmpty
+          ? null
+          : transmissionController.text.trim(),
+      insuranceExpiry: insuranceExpiry,
+      registrationExpiry: registrationExpiry,
+      inspectionExpiry: inspectionExpiry,
+    );
 
     if (existing != null) {
       final index = _cars.indexWhere((c) => c.id == existing.id);
       if (index != -1) {
-        _cars[index] =
-            CarModel(id: existing.id, brand: brand, model: model, year: year);
+        _cars[index] = savedCar;
       }
     } else {
-      final newCar = CarModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        brand: brand,
-        model: model,
-        year: year,
-      );
-      _cars.add(newCar);
-      _activeCarId ??= newCar.id;
+      _cars.add(savedCar);
+      _activeCarId ??= savedCar.id;
     }
 
     await CarService.saveCars(_cars);
+    await _syncExpiryReminders(savedCar);
     setState(() {});
+  }
+
+  Future<void> _syncExpiryReminders(CarModel car) async {
+    final reminders = await MaintenanceService.loadReminders();
+    reminders.removeWhere((r) =>
+        r.id == '${car.id}_registration' ||
+        r.id == '${car.id}_insurance' ||
+        r.id == '${car.id}_inspection');
+
+    if (car.registrationExpiry != null) {
+      reminders.add(MaintenanceReminder(
+        id: '${car.id}_registration',
+        title: 'انتهاء الاستمارة - ${car.label}',
+        dueDate: car.registrationExpiry!,
+      ));
+    }
+    if (car.insuranceExpiry != null) {
+      reminders.add(MaintenanceReminder(
+        id: '${car.id}_insurance',
+        title: 'انتهاء التأمين - ${car.label}',
+        dueDate: car.insuranceExpiry!,
+      ));
+    }
+    if (car.inspectionExpiry != null) {
+      reminders.add(MaintenanceReminder(
+        id: '${car.id}_inspection',
+        title: 'انتهاء الفحص الدوري - ${car.label}',
+        dueDate: car.inspectionExpiry!,
+      ));
+    }
+
+    await MaintenanceService.saveReminders(reminders);
+  }
+
+  Widget _buildExpiryDateRow({
+    required String label,
+    required DateTime? value,
+    required BuildContext context,
+    required void Function(DateTime?) onChanged,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          value == null
+              ? '$label: غير محدد'
+              : '$label: ${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}',
+          style: const TextStyle(fontSize: 13),
+        ),
+        TextButton(
+          onPressed: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: value ?? DateTime.now(),
+              firstDate: DateTime.now().subtract(const Duration(days: 365)),
+              lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+            );
+            if (picked != null) onChanged(picked);
+          },
+          child: const Text('تحديد'),
+        ),
+      ],
+    );
   }
 
   @override
@@ -307,8 +493,8 @@ class _CarsScreenState extends State<CarsScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addOrEditCar(),
-        icon: const Icon(Icons.add),
-        label: const Text('إضافة سيارة'),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('إضافة سيارة', style: TextStyle(color: Colors.white)),
         backgroundColor: const Color(0xFF1E3A5F),
       ),
     );

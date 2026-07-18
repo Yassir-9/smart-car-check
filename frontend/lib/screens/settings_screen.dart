@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme_notifier.dart';
+import '../services/auth_service.dart';
 import 'cars_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -162,6 +163,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                ),
+                onPressed: () async {
+                  await AuthService.signOut();
+                  if (context.mounted) {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('تسجيل الخروج'),
               ),
             ),
           ],

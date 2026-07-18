@@ -1,14 +1,23 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:share_plus/share_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/car_model.dart';
 import '../services/car_service.dart';
 import 'history_screen.dart';
+import 'maintenance_screen.dart';
 import 'cars_screen.dart';
 import 'settings_screen.dart';
+import 'parts_screen.dart';
+import 'maintenance_history_screen.dart';
+import 'obd_connect_screen.dart';
+import 'subscription_screen.dart';
 import '../services/pdf_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -21,6 +30,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   bool _isLoading = false;
+  bool _feedbackSubmitted = false;
   Map<String, dynamic>? _result;
   String? _errorText;
 
@@ -29,6 +39,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   bool _speechAvailable = false;
+
+  final ImagePicker _imagePicker = ImagePicker();
+  Uint8List? _selectedImage;
+  String _selectedImageMimeType = 'image/jpeg';
 
   static const String backendUrl =
       'https://car-ai-backend-7gpb.onrender.com/api/diagnose';
@@ -141,7 +155,24 @@ class _HomeScreenState extends State<HomeScreen> {
       _descriptionController.clear();
       _result = null;
       _errorText = null;
+      _feedbackSubmitted = false;
     });
+  }
+
+  Future<void> _submitFeedback(bool accurate) async {
+    final id = _result?['diagnosis_id'];
+    if (id == null) return;
+    setState(() => _feedbackSubmitted = true);
+    try {
+      await http.patch(
+        Uri.parse(
+            'https://car-ai-backend-7gpb.onrender.com/api/history/$id/feedback'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'accurate': accurate}),
+      );
+    } catch (e) {
+      // تجاهل فشل الإرسال، ما يهم تجربة المستخدم
+    }
   }
 
   Future<void> _exportPdf() async {
@@ -189,8 +220,60 @@ class _HomeScreenState extends State<HomeScreen> {
     SharePlus.instance.share(ShareParams(text: buffer.toString()));
   }
 
+  Future<void> _showImageSourceSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('التقاط صورة'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('اختيار من المعرض'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        imageQuality: 70,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _selectedImage = bytes;
+          _selectedImageMimeType = picked.mimeType ?? 'image/jpeg';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر الوصول للكاميرا/المعرض')),
+        );
+      }
+    }
+  }
+
   Future<void> _submitDiagnosis() async {
-    if (_descriptionController.text.trim().isEmpty || _activeCar == null) return;
+    if ((_descriptionController.text.trim().isEmpty && _selectedImage == null) ||
+        _activeCar == null) return;
     FocusScope.of(context).unfocus();
 
     setState(() {
@@ -200,9 +283,19 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
+      String? imageBase64;
+      if (_selectedImage != null) {
+        imageBase64 = base64Encode(_selectedImage!);
+      }
+
+      final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+
       final response = await http.post(
         Uri.parse(backendUrl),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (idToken != null) 'Authorization': 'Bearer $idToken',
+        },
         body: jsonEncode({
           'description': _descriptionController.text.trim(),
           'car': {
@@ -210,12 +303,26 @@ class _HomeScreenState extends State<HomeScreen> {
             'model': _activeCar!.model,
             'year': _activeCar!.year,
           },
+          if (imageBase64 != null)
+            'image': {
+              'data': imageBase64,
+              'media_type': _selectedImageMimeType,
+            },
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        setState(() => _result = data);
+        setState(() {
+          _result = data;
+          _feedbackSubmitted = false;
+        });
+      } else if (response.statusCode == 402) {
+        setState(() => _errorText =
+            'استنفدت عدد التشخيصات المجانية لهذا الشهر (5 تشخيصات). اشترك للاستمرار بدون حدود.');
+      } else if (response.statusCode == 401) {
+        setState(() =>
+            _errorText = 'يرجى تسجيل الدخول مرة أخرى للمتابعة');
       } else {
         setState(() => _errorText = 'خطأ من السيرفر: ${response.statusCode}');
       }
@@ -228,8 +335,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasContent = _result != null || _errorText != null ||
-        _descriptionController.text.isNotEmpty;
     final cardColor = Theme.of(context).cardColor;
 
     return GestureDetector(
@@ -239,28 +344,114 @@ class _HomeScreenState extends State<HomeScreen> {
           title: const Text('تشخيص السيارة الذكي'),
           centerTitle: true,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: 'الإعدادات',
-              onPressed: _openSettingsScreen,
-            ),
-            IconButton(
-              icon: const Icon(Icons.history),
-              tooltip: 'سجل التشخيصات',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HistoryScreen()),
+            AnimatedBuilder(
+              animation: _descriptionController,
+              builder: (context, _) {
+                final showReset = _result != null ||
+                    _errorText != null ||
+                    _descriptionController.text.isNotEmpty;
+                if (!showReset) return const SizedBox.shrink();
+                return IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'بدء تشخيص جديد',
+                  onPressed: _resetForm,
                 );
               },
             ),
-            if (hasContent)
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: 'بدء تشخيص جديد',
-                onPressed: _resetForm,
-              ),
           ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(56),
+            child: Container(
+              color: const Color(0xFF1E3A5F),
+              height: 56,
+              alignment: Alignment.center,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Row(
+                  children: [
+                    _buildNavItem(
+                      icon: Icons.workspace_premium_outlined,
+                      label: 'الاشتراك',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const SubscriptionScreen()),
+                        );
+                      },
+                    ),
+                    _buildNavItem(
+                      icon: Icons.settings_outlined,
+                      label: 'الإعدادات',
+                      onTap: _openSettingsScreen,
+                    ),
+                    _buildNavItem(
+                      icon: Icons.history,
+                      label: 'السجل',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const HistoryScreen()),
+                        );
+                      },
+                    ),
+                    _buildNavItem(
+                      icon: Icons.build_circle_outlined,
+                      label: 'الصيانة',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const MaintenanceScreen()),
+                        );
+                      },
+                    ),
+                    _buildNavItem(
+                      icon: Icons.storefront_outlined,
+                      label: 'قطع الغيار',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const PartsScreen()),
+                        );
+                      },
+                    ),
+                    if (_activeCar != null)
+                      _buildNavItem(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'سجل السيارة',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    MaintenanceHistoryScreen(
+                                        car: _activeCar!)),
+                          );
+                        },
+                      ),
+                    _buildNavItem(
+                      icon: Icons.bluetooth,
+                      label: 'OBD',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const ObdConnectScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
@@ -382,7 +573,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 TextField(
                   controller: _descriptionController,
                   maxLines: 4,
-                  onChanged: (_) => setState(() {}),
+                  textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.right,
                   decoration: InputDecoration(
                     hintText: 'مثال: صوت طقطقة عند الدوران يمين',
                     suffixIcon: IconButton(
@@ -414,6 +606,42 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontSize: 12, color: Colors.red.shade400)),
                       ],
                     ),
+                  ),
+                const SizedBox(height: 12),
+                if (_selectedImage != null)
+                  Stack(
+                    alignment: Alignment.topLeft,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          _selectedImage!,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: Colors.black54,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            iconSize: 16,
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () =>
+                                setState(() => _selectedImage = null),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: _showImageSourceSheet,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: const Text('أضف صورة للمبة التحذير (اختياري)'),
                   ),
                 const SizedBox(height: 16),
 
@@ -471,29 +699,57 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildResultCard()
                 else if (!_isLoading && _errorText == null)
                   _buildEmptyState(),
-                const SizedBox(height: 20),
-                Center(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final uri = Uri.parse("https://car-ai-backend-7gpb.onrender.com/download/app-release.apk");
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                    icon: const Icon(Icons.android),
-                    label: const Text("تحميل تطبيق أندرويد (نسخة تجريبية)"),
+                if (kIsWeb) ...[
+                  const SizedBox(height: 20),
+                  Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse("https://car-ai-backend-7gpb.onrender.com/download/app-release.apk");
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      icon: const Icon(Icons.android),
+                      label: const Text("تحميل تطبيق أندرويد"),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Center(
-                  child: Text(
-                    "نسخة iOS قريباً بإذن الله",
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  const SizedBox(height: 8),
+                  const Center(
+                    child: Text(
+                      "نسخة iOS قريباً بإذن الله",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 22, color: Colors.white),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
@@ -606,17 +862,239 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
           if (_result!['estimated_cost'] != null &&
               _result!['estimated_cost'] != 'null') ...[
-            const SizedBox(height: 12),
-            const Divider(),
-            Row(
-              children: [
-                const Icon(Icons.payments_outlined,
-                    size: 18, color: Colors.grey),
-                const SizedBox(width: 6),
-                Text('التكلفة التقديرية: ${_result!['estimated_cost']}',
-                    style: const TextStyle(fontSize: 13, color: Colors.grey)),
-              ],
+            const SizedBox(height: 14),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF66BB6A), width: 1),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF66BB6A),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.payments_outlined,
+                        size: 18, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('التكلفة التقديرية',
+                            style: TextStyle(
+                                fontSize: 12, color: Color(0xFF2E7D32))),
+                        const SizedBox(height: 2),
+                        Text('${_result!['estimated_cost']}',
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1B5E20))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ],
+          if (_result!['matched_parts'] != null &&
+              (_result!['matched_parts'] as List).isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Text('قطع غيار متوفرة لهذي المشكلة',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ...List<Map<String, dynamic>>.from(_result!['matched_parts']).map(
+              (p) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F8FF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFBBDEFB)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(p['partName'] ?? '',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 13)),
+                          if (p['price'] != null)
+                            Text('${p['price']} ر.س',
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.green)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () async {
+                        final uri = Uri.parse('tel:${p['sellerPhone']}');
+                        await launchUrl(uri,
+                            mode: LaunchMode.externalApplication);
+                      },
+                      icon: const Icon(Icons.call_outlined,
+                          color: Color(0xFF1E3A5F)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (_result!['external_search'] != null &&
+              _result!['external_search']['found'] == true) ...[
+            const SizedBox(height: 14),
+            const Text('🔍 نتائج بحث من الإنترنت',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ...List<Map<String, dynamic>>.from(
+                    _result!['external_search']['suggestions'] ?? [])
+                .map(
+              (s) {
+                final hasUrl =
+                    s['url'] != null && s['url'].toString().isNotEmpty && s['url'] != 'null';
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFFE082)),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: hasUrl
+                          ? () async {
+                              final uri = Uri.tryParse(s['url']);
+                              if (uri != null && await canLaunchUrl(uri)) {
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
+                              }
+                            }
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFC107),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.storefront,
+                                  size: 16, color: Colors.white),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(s['name'] ?? '',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13)),
+                                  if (s['estimated_price'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text('${s['estimated_price']}',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF2E7D32))),
+                                  ],
+                                  if (s['store_name'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(s['store_name'],
+                                        style: const TextStyle(
+                                            fontSize: 12, color: Colors.grey)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (hasUrl) ...[
+                              const SizedBox(width: 6),
+                              const Icon(Icons.arrow_outward,
+                                  size: 18, color: Color(0xFF9E7B1F)),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (_result!['external_search']['summary'] != null) ...[
+              const SizedBox(height: 4),
+              Text(_result!['external_search']['summary'],
+                  style: const TextStyle(
+                      fontSize: 12, fontStyle: FontStyle.italic)),
+            ],
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PartsScreen(
+                      initialBrand: _activeCar?.brand,
+                      initialModel: _activeCar?.model,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.build_outlined, size: 18),
+              label: const Text('ابحث عن قطعة الغيار المطلوبة'),
+            ),
+          ),
+          if (_result!['diagnosis_id'] != null) ...[
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+            _feedbackSubmitted
+                ? const Center(
+                    child: Text('شكراً على تقييمك! 🙏',
+                        style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  )
+                : Column(
+                    children: [
+                      const Text('هل كان هذا التشخيص صحيحاً؟',
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () => _submitFeedback(true),
+                            icon: const Icon(Icons.thumb_up_outlined,
+                                size: 16, color: Colors.green),
+                            label: const Text('نعم، صحيح'),
+                          ),
+                          const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _submitFeedback(false),
+                            icon: const Icon(Icons.thumb_down_outlined,
+                                size: 16, color: Colors.red),
+                            label: const Text('لا، غير دقيق'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
           ],
         ],
       ),
