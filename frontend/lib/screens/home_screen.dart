@@ -374,16 +374,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(56),
+            preferredSize: const Size.fromHeight(104),
             child: Container(
               color: const Color(0xFF1E3A5F),
-              height: 56,
-              alignment: Alignment.center,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Row(
-                  children: [
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Wrap(
+                alignment: WrapAlignment.spaceEvenly,
+                children: [
                     _buildNavItem(
                       icon: Icons.dashboard_outlined,
                       label: 'لوحة التحكم',
@@ -472,8 +469,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
