@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/part_listing.dart';
 import 'add_part_screen.dart';
+import '../services/cart_service.dart';
+import 'cart_screen.dart';
 
 class PartsScreen extends StatefulWidget {
   final String? initialBrand;
@@ -234,7 +236,48 @@ class _PartsScreenState extends State<PartsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('سوق قطع الغيار')),
+      appBar: AppBar(
+        title: const Text('سوق قطع الغيار'),
+        actions: [
+          ValueListenableBuilder<int>(
+            valueListenable: CartService.itemCount,
+            builder: (context, count, _) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart_outlined),
+                    tooltip: 'السلة',
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CartScreen()),
+                      );
+                      setState(() {});
+                    },
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text('$count',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 10)),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -409,6 +452,29 @@ FirebaseAuth.instance.currentUser?.uid)
                                             label: Text('اتصال: ${part.sellerPhone}'),
                                           ),
                                         ),
+                                        if (part.price != null &&
+                                            part.ownerId != FirebaseAuth.instance.currentUser?.uid) ...[
+                                          const SizedBox(height: 6),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              onPressed: CartService.contains(part.id)
+                                                  ? null
+                                                  : () {
+                                                      CartService.add(part);
+                                                      setState(() {});
+                                                    },
+                                              icon: Icon(
+                                                CartService.contains(part.id)
+                                                    ? Icons.check
+                                                    : Icons.add_shopping_cart_outlined,
+                                                size: 18,
+                                              ),
+                                              label: Text(
+                                                  CartService.contains(part.id) ? 'مضافة للسلة' : 'أضف للسلة'),
+                                            ),
+                                          ),
+                                        ],
                                         if (part.ownerId != null &&
                                             part.ownerId != FirebaseAuth.instance.currentUser?.uid) ...[
                                           const SizedBox(height: 6),
