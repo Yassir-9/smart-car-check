@@ -17,6 +17,7 @@ import 'settings_screen.dart';
 import 'parts_screen.dart';
 import 'maintenance_history_screen.dart';
 import 'obd_connect_screen.dart';
+import 'dashboard_screen.dart';
 import 'subscription_screen.dart';
 import '../services/pdf_service.dart';
 
@@ -383,6 +384,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Row(
                   children: [
+                    _buildNavItem(
+                      icon: Icons.dashboard_outlined,
+                      label: 'لوحة التحكم',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const DashboardScreen()),
+                        );
+                      },
+                    ),
                     _buildNavItem(
                       icon: Icons.workspace_premium_outlined,
                       label: 'الاشتراك',
