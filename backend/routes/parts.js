@@ -1,26 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
 const verifyToken = require('../middleware/auth');
+const { db } = require('../firebaseAdmin');
 
-const PARTS_FILE = path.join(__dirname, '../parts.json');
-
-function readParts() {
+async function readParts() {
   try {
-    return JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8'));
+    const snapshot = await db.collection('parts').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (e) {
+    console.error('خطأ بقراءة القطع من Firestore:', e);
     return [];
   }
 }
 
-function saveParts(parts) {
-  fs.writeFileSync(PARTS_FILE, JSON.stringify(parts, null, 2));
-}
-
-router.get('/parts', (req, res) => {
+router.get('/parts', async (req, res) => {
   const { brand, model } = req.query;
-  let parts = readParts();
+  let parts = await readParts();
   if (brand) {
     parts = parts.filter((p) => p.carBrand === brand);
   }
@@ -30,76 +25,88 @@ router.get('/parts', (req, res) => {
   res.json(parts);
 });
 
-router.post('/parts', verifyToken, (req, res) => {
-  const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
-  if (!partName || !carBrand || !sellerPhone) {
-    return res
-      .status(400)
-      .json({ error: 'اسم القطعة والشركة ورقم الجوال مطلوبة' });
+router.post('/parts', verifyToken, async (req, res) => {
+  try {
+    const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
+    if (!partName || !carBrand || !sellerPhone) {
+      return res
+        .status(400)
+        .json({ error: 'اسم القطعة والشركة ورقم الجوال مطلوبة' });
+    }
+    const newPart = {
+      ownerId: req.uid,
+      partName,
+      carBrand,
+      carModel: carModel || '',
+      price: price || null,
+      sellerPhone,
+      notes: notes || '',
+      oemNumber: oemNumber || null,
+      imageBase64: imageBase64 || null,
+      createdAt: new Date().toISOString(),
+    };
+    const docRef = await db.collection('parts').add(newPart);
+    res.json({ id: docRef.id, ...newPart });
+  } catch (error) {
+    console.error('خطأ بإضافة القطعة:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
-  const parts = readParts();
-  const newPart = {
-    id: Date.now().toString(),
-    ownerId: req.uid,
-    partName,
-    carBrand,
-    carModel: carModel || '',
-    price: price || null,
-    sellerPhone,
-    notes: notes || '',
-    oemNumber: oemNumber || null,
-    imageBase64: imageBase64 || null,
-    createdAt: new Date().toISOString(),
-  };
-  parts.unshift(newPart);
-  saveParts(parts);
-  res.json(newPart);
 });
 
-router.delete('/parts/:id', verifyToken, (req, res) => {
-  const parts = readParts();
-  const part = parts.find((p) => p.id === req.params.id);
-  if (!part) {
-    return res.status(404).json({ error: 'القطعة غير موجودة' });
+router.delete('/parts/:id', verifyToken, async (req, res) => {
+  try {
+    const docRef = db.collection('parts').doc(req.params.id);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'القطعة غير موجودة' });
+    }
+    const part = doc.data();
+    if (part.ownerId && part.ownerId !== req.uid) {
+      return res.status(403).json({ error: 'لا تملك صلاحية حذف هذه القطعة' });
+    }
+    await docRef.delete();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('خطأ بحذف القطعة:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
-  if (part.ownerId && part.ownerId !== req.uid) {
-    return res.status(403).json({ error: 'لا تملك صلاحية حذف هذه القطعة' });
-  }
-  const filtered = parts.filter((p) => p.id !== req.params.id);
-  saveParts(filtered);
-  res.json({ success: true });
 });
 
-router.put('/parts/:id', verifyToken, (req, res) => {
-  const parts = readParts();
-  const index = parts.findIndex((p) => p.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ error: 'القطعة غير موجودة' });
+router.put('/parts/:id', verifyToken, async (req, res) => {
+  try {
+    const docRef = db.collection('parts').doc(req.params.id);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'القطعة غير موجودة' });
+    }
+    const part = doc.data();
+    if (part.ownerId && part.ownerId !== req.uid) {
+      return res.status(403).json({ error: 'لا تملك صلاحية تعديل هذه القطعة' });
+    }
+    const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
+    if (!partName || !carBrand || !sellerPhone) {
+      return res
+        .status(400)
+        .json({ error: 'اسم القطعة والشركة ورقم الجوال مطلوبة' });
+    }
+    const updated = {
+      ...part,
+      ownerId: part.ownerId || req.uid,
+      partName,
+      carBrand,
+      carModel: carModel || '',
+      price: price || null,
+      sellerPhone,
+      notes: notes || '',
+      oemNumber: oemNumber !== undefined ? oemNumber : part.oemNumber || null,
+      imageBase64: imageBase64 !== undefined ? imageBase64 : part.imageBase64 || null,
+    };
+    await docRef.set(updated);
+    res.json({ id: docRef.id, ...updated });
+  } catch (error) {
+    console.error('خطأ بتعديل القطعة:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
-  const part = parts[index];
-  if (part.ownerId && part.ownerId !== req.uid) {
-    return res.status(403).json({ error: 'لا تملك صلاحية تعديل هذه القطعة' });
-  }
-  const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
-  if (!partName || !carBrand || !sellerPhone) {
-    return res
-      .status(400)
-      .json({ error: 'اسم القطعة والشركة ورقم الجوال مطلوبة' });
-  }
-  parts[index] = {
-    ...part,
-    ownerId: part.ownerId || req.uid,
-    partName,
-    carBrand,
-    carModel: carModel || '',
-    price: price || null,
-    sellerPhone,
-    notes: notes || '',
-    oemNumber: oemNumber !== undefined ? oemNumber : part.oemNumber || null,
-    imageBase64: imageBase64 !== undefined ? imageBase64 : part.imageBase64 || null,
-  };
-  saveParts(parts);
-  res.json(parts[index]);
 });
 
 module.exports = router;
