@@ -7,6 +7,9 @@ class MaintenanceRecord {
   final String? cost;
   final String? notes;
   final String? invoiceImageBase64;
+  final String? category;
+  final String? mileageAtService;
+  final String? partNumber;
 
   MaintenanceRecord({
     required this.id,
@@ -17,6 +20,9 @@ class MaintenanceRecord {
     this.cost,
     this.notes,
     this.invoiceImageBase64,
+    this.category,
+    this.mileageAtService,
+    this.partNumber,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +34,9 @@ class MaintenanceRecord {
         'cost': cost,
         'notes': notes,
         'invoiceImageBase64': invoiceImageBase64,
+        'category': category,
+        'mileageAtService': mileageAtService,
+        'partNumber': partNumber,
       };
 
   factory MaintenanceRecord.fromJson(Map<String, dynamic> json) {
@@ -40,6 +49,9 @@ class MaintenanceRecord {
       cost: json['cost'] as String?,
       notes: json['notes'] as String?,
       invoiceImageBase64: json['invoiceImageBase64'] as String?,
+      category: json['category'] as String?,
+      mileageAtService: json['mileageAtService'] as String?,
+      partNumber: json['partNumber'] as String?,
     );
   }
 }

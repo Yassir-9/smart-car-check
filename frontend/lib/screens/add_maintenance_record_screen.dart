@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/maintenance_record.dart';
 import '../services/maintenance_record_service.dart';
+import '../models/maintenance_reminder.dart';
+import '../services/maintenance_service.dart';
+import '../data/maintenance_categories_data.dart';
 
 class AddMaintenanceRecordScreen extends StatefulWidget {
   final String carId;
@@ -18,12 +21,15 @@ class AddMaintenanceRecordScreen extends StatefulWidget {
 class _AddMaintenanceRecordScreenState
     extends State<AddMaintenanceRecordScreen> {
   final _workTypeController = TextEditingController();
+  final _mileageController = TextEditingController();
+  final _partNumberController = TextEditingController();
   final _workshopController = TextEditingController();
   final _costController = TextEditingController();
   final _notesController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
 
   DateTime _date = DateTime.now();
+  String _selectedCategory = MaintenanceCategoriesData.categories.first;
   Uint8List? _invoiceImage;
   bool _isSubmitting = false;
   String? _errorText;
@@ -31,6 +37,8 @@ class _AddMaintenanceRecordScreenState
   @override
   void dispose() {
     _workTypeController.dispose();
+    _mileageController.dispose();
+    _partNumberController.dispose();
     _workshopController.dispose();
     _costController.dispose();
     _notesController.dispose();
@@ -81,8 +89,30 @@ class _AddMaintenanceRecordScreenState
             : _notesController.text.trim(),
         invoiceImageBase64:
             _invoiceImage != null ? base64Encode(_invoiceImage!) : null,
+        category: _selectedCategory,
+        mileageAtService: _mileageController.text.trim().isEmpty
+            ? null
+            : _mileageController.text.trim(),
+        partNumber: _partNumberController.text.trim().isEmpty
+            ? null
+            : _partNumberController.text.trim(),
       );
       await MaintenanceRecordService.addRecord(record);
+
+      if (MaintenanceCategoriesData.hasAutoReminder(_selectedCategory)) {
+        final intervalDays =
+            MaintenanceCategoriesData.intervalDays[_selectedCategory] ?? 0;
+        final nextDue = _date.add(Duration(days: intervalDays));
+        final reminders = await MaintenanceService.loadReminders();
+        reminders.add(MaintenanceReminder(
+          id: '${DateTime.now().millisecondsSinceEpoch}_auto',
+          title: 'موعد $_selectedCategory القادم',
+          dueDate: nextDue,
+          notes: 'تم إنشاؤه تلقائياً بعد تسجيل صيانة',
+        ));
+        await MaintenanceService.saveReminders(reminders);
+      }
+
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _errorText = 'تعذر الحفظ، حاول مرة أخرى');
@@ -100,13 +130,51 @@ class _AddMaintenanceRecordScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('نوع العمل',
+            const Text('نوع الصيانة',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCategory,
+              isExpanded: true,
+              items: MaintenanceCategoriesData.categories
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _selectedCategory = val;
+                    if (_workTypeController.text.trim().isEmpty) {
+                      _workTypeController.text = val;
+                    }
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text('وصف العمل (اختياري)',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _workTypeController,
               decoration:
-                  const InputDecoration(hintText: 'مثال: تغيير الزيت'),
+                  const InputDecoration(hintText: 'مثال: تغيير الزيت + الفلتر'),
+            ),
+            const SizedBox(height: 16),
+            const Text('الكيلومترات عند الصيانة (اختياري)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _mileageController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(hintText: 'مثال: 85000'),
+            ),
+            const SizedBox(height: 16),
+            const Text('رقم القطعة (اختياري)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _partNumberController,
+              decoration: const InputDecoration(hintText: 'مثال: 90915-YZZD4'),
             ),
             const SizedBox(height: 16),
             const Text('الورشة (اختياري)',
