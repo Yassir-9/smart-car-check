@@ -171,6 +171,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         _buildRemindersSection(),
                         const SizedBox(height: 16),
                         _buildRecentRecordsSection(),
+                        const SizedBox(height: 16),
+                        _buildStatsSection(),
                       ],
                     ),
                   ),
@@ -563,6 +565,83 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             );
           }),
+      ],
+    );
+  }
+
+  Widget _buildStatsSection() {
+    if (_records.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Text('لا توجد بيانات كافية للإحصائيات بعد',
+            style: TextStyle(fontSize: 13, color: Colors.grey)),
+      );
+    }
+
+    double totalCost = 0;
+    double costThisYear = 0;
+    final now = DateTime.now();
+    final categoryCounts = <String, int>{};
+
+    for (final r in _records) {
+      final cost = double.tryParse(r.cost ?? '') ?? 0;
+      totalCost += cost;
+      if (r.date.year == now.year) costThisYear += cost;
+      final cat = r.category ?? r.workType;
+      if (cat.isNotEmpty) {
+        categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+      }
+    }
+
+    String? mostCommon;
+    int mostCommonCount = 0;
+    categoryCounts.forEach((cat, count) {
+      if (count > mostCommonCount) {
+        mostCommon = cat;
+        mostCommonCount = count;
+      }
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('إحصائيات الصيانة',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              _statRow('إجمالي تكلفة الصيانة', '${totalCost.toStringAsFixed(0)} ر.س'),
+              const Divider(height: 20),
+              _statRow('تكلفة هذا العام', '${costThisYear.toStringAsFixed(0)} ر.س'),
+              if (mostCommon != null) ...[
+                const Divider(height: 20),
+                _statRow('أكثر نوع صيانة تكراراً', '$mostCommon ($mostCommonCount مرة)'),
+              ],
+              const Divider(height: 20),
+              _statRow('عدد سجلات الصيانة', '${_records.length}'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _statRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       ],
     );
   }
