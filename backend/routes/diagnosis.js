@@ -41,21 +41,24 @@ async function checkAndTrackUsage(uid) {
   return { allowed: true, isActive: false, usageRef, usageCount: currentCount };
 }
 
-const HISTORY_FILE = path.join(__dirname, '../history.json');
-
-function readHistory() {
+async function saveToHistory(uid, entry) {
   try {
-    const data = fs.readFileSync(HISTORY_FILE, 'utf8');
-    return JSON.parse(data);
+    await db.collection('users').doc(uid)
+      .collection('history').doc(entry.id).set(entry);
   } catch (e) {
-    return [];
+    console.error('خطأ بحفظ السجل:', e);
   }
 }
 
-function saveToHistory(entry) {
-  const history = readHistory();
-  history.unshift(entry); // أحدث سجل بالأول
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+async function getUserHistory(uid) {
+  try {
+    const snapshot = await db.collection('users').doc(uid)
+      .collection('history').orderBy('timestamp', 'desc').get();
+    return snapshot.docs.map((doc) => doc.data());
+  } catch (e) {
+    console.error('خطأ بجلب السجل:', e);
+    return [];
+  }
 }
 
 async function readParts() {
@@ -129,7 +132,7 @@ async function searchPartOnline(possibleIssue, car) {
   }
 }
 
-function findSimilarConfirmedCases(description, carBrand) {
+async function findSimilarConfirmedCases(description, carBrand) {
   if (!description) return '';
   const stopWords = ['في', 'من', 'إلى', 'أو', 'مع', 'عن', 'هذا', 'هذه', 'قد'];
   const keywords = description
@@ -137,15 +140,22 @@ function findSimilarConfirmedCases(description, carBrand) {
     .map((w) => w.replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ''))
     .filter((w) => w.length >= 3 && !stopWords.includes(w));
 
-  const history = readHistory();
-  const confirmed = history.filter((h) => h.feedback && h.feedback.accurate === true);
+  let confirmed = [];
+  try {
+    const snapshot = await db.collection('confirmed_diagnoses')
+      .orderBy('confirmedAt', 'desc').limit(200).get();
+    confirmed = snapshot.docs.map((doc) => doc.data());
+  } catch (e) {
+    console.error('خطأ بجلب الحالات المؤكدة:', e);
+    return '';
+  }
 
   const scored = confirmed
     .map((h) => {
       let score = 0;
       keywords.forEach((k) => {
         if (h.description && h.description.includes(k)) score += 1;
-        if (h.result?.possible_issue && h.result.possible_issue.includes(k)) score += 1;
+        if (h.possibleIssue && h.possibleIssue.includes(k)) score += 1;
       });
       return { entry: h, score };
     })
@@ -158,7 +168,7 @@ function findSimilarConfirmedCases(description, carBrand) {
   const lines = scored
     .map(
       (x) =>
-        `- وصف مشابه: "${x.entry.description}" → تم تأكيد إن التشخيص الصحيح كان: ${x.entry.result?.possible_issue}`
+        `- وصف مشابه: "${x.entry.description}" → تم تأكيد إن التشخيص الصحيح كان: ${x.entry.possibleIssue}`
     )
     .join('\n');
 
@@ -212,7 +222,7 @@ router.post('/diagnose', verifyToken, async (req, res) => {
 كن واقعياً وصادقاً بنسبة الثقة: لو الوصف مقتضب أو الصورة غير واضحة، اجعل النسبة معقولة (مثلاً 60-75) وليس مبالغ فيها.
 هذا تشخيص أولي توجيهي فقط وليس بديلاً عن فحص فني متخصص، وضّح ذلك ضمن الشرح لو كانت الحالة تستدعي زيارة ورشة فوراً.`;
 
-    const similarCasesContext = findSimilarConfirmedCases(description, car?.brand);
+    const similarCasesContext = await findSimilarConfirmedCases(description, car?.brand);
 
     const userText = `سيارة المستخدم: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}
 وصف المشكلة: ${description || 'لم يكتب المستخدم وصفاً نصياً، اعتمد على تحليل الصورة المرفقة بالكامل'}${obdContext}${similarCasesContext}`;
@@ -251,9 +261,9 @@ router.post('/diagnose', verifyToken, async (req, res) => {
       parsed.external_search = await searchPartOnline(parsed.possible_issue, car);
     }
 
-    // حفظ تلقائي بالسجل
+    // حفظ تلقائي بالسجل (خاص بالمستخدم فقط)
     const historyId = Date.now().toString();
-    saveToHistory({
+    await saveToHistory(req.uid, {
       id: historyId,
       timestamp: new Date().toISOString(),
       car: car || {},
@@ -277,34 +287,54 @@ router.post('/diagnose', verifyToken, async (req, res) => {
   }
 });
 
-// جلب سجل الحوادث
-router.get('/history', (req, res) => {
-  const history = readHistory();
+// جلب سجل الحوادث (خاص بالمستخدم المسجّل فقط)
+router.get('/history', verifyToken, async (req, res) => {
+  const history = await getUserHistory(req.uid);
   res.json(history);
 });
 
-// حذف سجل معيّن
-router.delete('/history/:id', (req, res) => {
-  const history = readHistory();
-  const filtered = history.filter((h) => h.id !== req.params.id);
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(filtered, null, 2));
-  res.json({ success: true });
+// حذف سجل معيّن (خاص بالمستخدم فقط)
+router.delete('/history/:id', verifyToken, async (req, res) => {
+  try {
+    await db.collection('users').doc(req.uid)
+      .collection('history').doc(req.params.id).delete();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('خطأ بحذف السجل:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
+  }
 });
 
 // تسجيل تقييم دقة التشخيص (يستخدم لتحسين النتائج المستقبلية)
-router.patch('/history/:id/feedback', (req, res) => {
-  const { accurate } = req.body;
-  const history = readHistory();
-  const index = history.findIndex((h) => h.id === req.params.id);
-  if (index === -1) {
-    return res.status(404).json({ error: 'السجل غير موجود' });
+router.patch('/history/:id/feedback', verifyToken, async (req, res) => {
+  try {
+    const { accurate } = req.body;
+    const docRef = db.collection('users').doc(req.uid).collection('history').doc(req.params.id);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'السجل غير موجود' });
+    }
+    const feedback = {
+      accurate: !!accurate,
+      ratedAt: new Date().toISOString(),
+    };
+    await docRef.set({ feedback }, { merge: true });
+
+    if (accurate === true) {
+      const entry = doc.data();
+      await db.collection('confirmed_diagnoses').add({
+        description: entry.description,
+        possibleIssue: entry.result?.possible_issue || null,
+        carBrand: entry.car?.brand || null,
+        confirmedAt: new Date().toISOString(),
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('خطأ بتسجيل التقييم:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
-  history[index].feedback = {
-    accurate: !!accurate,
-    ratedAt: new Date().toISOString(),
-  };
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
-  res.json({ success: true });
 });
 
 router.post('/ask-expert', verifyToken, async (req, res) => {
