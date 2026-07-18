@@ -32,10 +32,12 @@ class _AddPartScreenState extends State<AddPartScreen> {
   final _phoneController = TextEditingController();
   final _notesController = TextEditingController();
   final _oemController = TextEditingController();
+  final _partBrandController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
 
   String _selectedBrand = _brands.first;
   String? _selectedModel;
+  String _selectedCondition = 'مستعملة';
   bool _isSubmitting = false;
   String? _errorText;
   Uint8List? _partImage;
@@ -53,6 +55,10 @@ class _AddPartScreenState extends State<AddPartScreen> {
       _phoneController.text = existing.sellerPhone;
       _notesController.text = existing.notes ?? '';
       _oemController.text = existing.oemNumber ?? '';
+      _partBrandController.text = existing.partBrand ?? '';
+      if (existing.condition == 'جديدة' || existing.condition == 'مستعملة') {
+        _selectedCondition = existing.condition!;
+      }
       _existingImageBase64 = existing.imageBase64;
       if (_brands.contains(existing.carBrand)) {
         _selectedBrand = existing.carBrand;
@@ -93,6 +99,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
     _phoneController.dispose();
     _notesController.dispose();
     _oemController.dispose();
+    _partBrandController.dispose();
     super.dispose();
   }
 
@@ -140,6 +147,10 @@ class _AddPartScreenState extends State<AddPartScreen> {
             ? null
             : _oemController.text.trim(),
         'imageBase64': imagePayload,
+        'condition': _selectedCondition,
+        'partBrand': _partBrandController.text.trim().isEmpty
+            ? null
+            : _partBrandController.text.trim(),
       });
       final headers = {
         'Content-Type': 'application/json',
@@ -182,7 +193,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
               decoration: const InputDecoration(hintText: 'مثال: حامل مساند خلفي'),
             ),
             const SizedBox(height: 16),
-            const Text('الشركة المصنعة', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('شركة السيارة المتوافقة', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               initialValue: _selectedBrand,
@@ -193,6 +204,26 @@ class _AddPartScreenState extends State<AddPartScreen> {
               onChanged: (val) {
                 if (val != null) setState(() => _selectedBrand = val);
               },
+            ),
+            const SizedBox(height: 16),
+            const Text('حالة القطعة', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'جديدة', label: Text('جديدة')),
+                ButtonSegment(value: 'مستعملة', label: Text('مستعملة')),
+              ],
+              selected: {_selectedCondition},
+              onSelectionChanged: (val) =>
+                  setState(() => _selectedCondition = val.first),
+            ),
+            const SizedBox(height: 16),
+            const Text('الشركة المصنّعة للقطعة (اختياري)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _partBrandController,
+              decoration: const InputDecoration(hintText: 'مثال: Bosch، Denso، أصلي وكالة'),
             ),
             const SizedBox(height: 16),
             const Text('الموديل', style: TextStyle(fontWeight: FontWeight.bold)),

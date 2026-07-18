@@ -9,6 +9,8 @@ class PartListing {
   final String? ownerId;
   final String? oemNumber;
   final String? imageBase64;
+  final String? condition;
+  final String? partBrand;
 
   PartListing({
     required this.id,
@@ -21,6 +23,8 @@ class PartListing {
     this.ownerId,
     this.oemNumber,
     this.imageBase64,
+    this.condition,
+    this.partBrand,
   });
 
   factory PartListing.fromJson(Map<String, dynamic> json) {
@@ -35,6 +39,8 @@ class PartListing {
       ownerId: json['ownerId'],
       oemNumber: json['oemNumber'],
       imageBase64: json['imageBase64'],
+      condition: json['condition'],
+      partBrand: json['partBrand'],
     );
   }
 }

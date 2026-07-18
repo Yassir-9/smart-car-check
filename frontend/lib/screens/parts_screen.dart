@@ -171,6 +171,27 @@ class _PartsScreenState extends State<PartsScreen> {
                                       children: [
                                         Row(
                                           children: [
+                                            if (part.condition != null)
+                                              Container(
+                                                margin: const EdgeInsets.only(left: 6),
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: part.condition == 'جديدة'
+                                                      ? const Color(0xFFE3F2FD)
+                                                      : const Color(0xFFF3E5F5),
+                                                  borderRadius: BorderRadius.circular(20),
+                                                ),
+                                                child: Text(
+                                                  part.condition!,
+                                                  style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: part.condition == 'جديدة'
+                                                          ? const Color(0xFF1565C0)
+                                                          : const Color(0xFF7B1FA2)),
+                                                ),
+                                              ),
                                             Expanded(
                                               child: Text(
                                                 part.partName,
@@ -226,6 +247,14 @@ FirebaseAuth.instance.currentUser?.uid)
                                             part.oemNumber!.isNotEmpty) ...[
                                           const SizedBox(height: 4),
                                           Text('رقم القطعة: ${part.oemNumber}',
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.blueGrey)),
+                                        ],
+                                        if (part.partBrand != null &&
+                                            part.partBrand!.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text('الشركة المصنّعة: ${part.partBrand}',
                                               style: const TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.blueGrey)),
