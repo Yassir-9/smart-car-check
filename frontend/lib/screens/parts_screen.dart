@@ -7,6 +7,7 @@ import '../models/part_listing.dart';
 import 'add_part_screen.dart';
 import '../services/cart_service.dart';
 import 'cart_screen.dart';
+import 'seller_dashboard_screen.dart';
 
 class PartsScreen extends StatefulWidget {
   final String? initialBrand;
@@ -239,6 +240,16 @@ class _PartsScreenState extends State<PartsScreen> {
       appBar: AppBar(
         title: const Text('سوق قطع الغيار'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.storefront_outlined),
+            tooltip: 'لوحة تحكم البائع',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SellerDashboardScreen()),
+              );
+            },
+          ),
           ValueListenableBuilder<int>(
             valueListenable: CartService.itemCount,
             builder: (context, count, _) {
