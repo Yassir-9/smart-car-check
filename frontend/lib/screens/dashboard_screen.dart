@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/car_model.dart';
 import '../models/maintenance_reminder.dart';
 import '../models/maintenance_record.dart';
+import '../services/health_score_service.dart';
 import '../services/car_service.dart';
 import '../services/maintenance_service.dart';
 import '../services/maintenance_record_service.dart';
@@ -403,6 +404,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
+                Builder(builder: (context) {
+                  final carRecords = _records.where((r) => r.carId == car.id).toList();
+                  final overdue = _reminders
+                      .where((r) => !r.isDone && r.dueDate.isBefore(DateTime.now()))
+                      .toList();
+                  final score = HealthScoreService.calculate(
+                    car: car,
+                    records: carRecords,
+                    overdueReminders: overdue,
+                  );
+                  final scoreColor = score >= 85
+                      ? const Color(0xFF388E3C)
+                      : score >= 65
+                          ? const Color(0xFF7CB342)
+                          : score >= 40
+                              ? const Color(0xFFF57C00)
+                              : const Color(0xFFD32F2F);
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.only(left: 6),
+                    decoration: BoxDecoration(
+                      color: scoreColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text('$score%',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.bold, color: scoreColor)),
+                  );
+                }),
                 IconButton(
                   icon: const Icon(Icons.receipt_long_outlined, size: 20),
                   tooltip: 'سجل الصيانة',
