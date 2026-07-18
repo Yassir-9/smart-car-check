@@ -836,6 +836,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                     color: color, fontSize: 12, fontWeight: FontWeight.bold)),
           ),
+          if (_result!['confidence_score'] != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.psychology_outlined, size: 16, color: Colors.grey[700]),
+                const SizedBox(width: 6),
+                Text('نسبة الثقة بالتشخيص: ${_result!['confidence_score']}%',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800])),
+              ],
+            ),
+            if (_result!['confidence_reason'] != null) ...[
+              const SizedBox(height: 3),
+              Padding(
+                padding: const EdgeInsets.only(right: 22),
+                child: Text(_result!['confidence_reason'],
+                    style: TextStyle(fontSize: 11.5, color: Colors.grey[600])),
+              ),
+            ],
+          ],
+          if (_result!['can_drive'] != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.directions_car_filled_outlined, size: 18, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_result!['can_drive'],
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: color)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Text(_result!['explanation'] ?? '',
               style: const TextStyle(fontSize: 14, height: 1.6)),
