@@ -9,25 +9,35 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLogin = true;
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
+
+  bool _codeSent = false;
   bool _isLoading = false;
   String? _errorText;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _phoneController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+  String? _normalizePhone(String raw) {
+    var digits = raw.trim().replaceAll(RegExp(r'[^0-9+]'), '');
+    if (digits.isEmpty) return null;
+    if (digits.startsWith('+')) return digits;
+    if (digits.startsWith('00')) return '+${digits.substring(2)}';
+    if (digits.startsWith('0')) return '+966${digits.substring(1)}';
+    if (digits.startsWith('966')) return '+$digits';
+    if (digits.startsWith('5') && digits.length == 9) return '+966$digits';
+    return '+$digits';
+  }
 
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _errorText = 'عبّي البريد وكلمة المرور');
+  Future<void> _sendCode() async {
+    final phone = _normalizePhone(_phoneController.text);
+    if (phone == null || phone.length < 8) {
+      setState(() => _errorText = 'اكتب رقم جوال صحيح');
       return;
     }
 
@@ -36,9 +46,41 @@ class _AuthScreenState extends State<AuthScreen> {
       _errorText = null;
     });
 
-    final error = _isLogin
-        ? await AuthService.signIn(email, password)
-        : await AuthService.signUp(email, password);
+    await AuthService.sendOtp(
+      phone: phone,
+      onCodeSent: () {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _codeSent = true;
+        });
+      },
+      onError: (err) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _errorText = err;
+        });
+      },
+      onAutoVerified: () {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+      },
+    );
+  }
+
+  Future<void> _verifyCode() async {
+    if (_otpController.text.trim().length < 4) {
+      setState(() => _errorText = 'اكتب رمز التحقق كامل');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
+
+    final error = await AuthService.verifyOtp(_otpController.text.trim());
 
     if (mounted) {
       setState(() {
@@ -61,27 +103,40 @@ class _AuthScreenState extends State<AuthScreen> {
                 const Icon(Icons.directions_car, size: 64, color: Color(0xFF1E3A5F)),
                 const SizedBox(height: 16),
                 Text(
-                  _isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد',
+                  _codeSent ? 'أدخل رمز التحقق' : 'تسجيل الدخول برقم الجوال',
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(height: 8),
+                if (_codeSent)
+                  Text(
+                    'أرسلنا رمز تحقق مكوّن من 6 أرقام إلى جوالك',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    textAlign: TextAlign.center,
+                  ),
                 const SizedBox(height: 24),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'البريد الإلكتروني',
-                    prefixIcon: Icon(Icons.email_outlined),
+                if (!_codeSent) ...[
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    textAlign: TextAlign.left,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم الجوال',
+                      hintText: '05XXXXXXXX',
+                      prefixIcon: Icon(Icons.phone_iphone_outlined),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'كلمة المرور',
-                    prefixIcon: Icon(Icons.lock_outline),
+                ] else ...[
+                  TextField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 22, letterSpacing: 6),
+                    decoration: const InputDecoration(
+                      labelText: 'رمز التحقق',
+                      hintText: '------',
+                    ),
                   ),
-                ),
+                ],
                 if (_errorText != null) ...[
                   const SizedBox(height: 12),
                   Text(_errorText!, style: const TextStyle(color: Colors.red)),
@@ -91,42 +146,25 @@ class _AuthScreenState extends State<AuthScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
+                    onPressed: _isLoading ? null : (_codeSent ? _verifyCode : _sendCode),
                     child: _isLoading
                         ? const SizedBox(
                             width: 20, height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(_isLogin ? 'دخول' : 'إنشاء الحساب'),
+                        : Text(_codeSent ? 'تأكيد الرمز' : 'إرسال رمز التحقق'),
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => setState(() {
-                    _isLogin = !_isLogin;
-                    _errorText = null;
-                  }),
-                  child: Text(_isLogin
-                      ? 'ما عندك حساب؟ أنشئ حساب جديد'
-                      : 'عندك حساب؟ سجّل دخول'),
-                ),
-                if (_isLogin)
+                if (_codeSent)
                   TextButton(
-                    onPressed: () async {
-                      final email = _emailController.text.trim();
-                      if (email.isEmpty) {
-                        setState(() => _errorText = 'اكتب بريدك أول عشان نرسل لك رابط الاستعادة');
-                        return;
-                      }
-                      final error = await AuthService.resetPassword(email);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(error ?? 'تم إرسال رابط استعادة كلمة المرور إلى بريدك'),
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('نسيت كلمة المرور؟'),
+                    onPressed: _isLoading
+                        ? null
+                        : () => setState(() {
+                              _codeSent = false;
+                              _otpController.clear();
+                              _errorText = null;
+                            }),
+                    child: const Text('تغيير رقم الجوال'),
                   ),
               ],
             ),
