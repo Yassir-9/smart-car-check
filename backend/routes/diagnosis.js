@@ -58,17 +58,17 @@ function saveToHistory(entry) {
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
 }
 
-const PARTS_FILE = path.join(__dirname, '../parts.json');
-
-function readParts() {
+async function readParts() {
   try {
-    return JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8'));
+    const snapshot = await db.collection('parts').orderBy('createdAt', 'desc').get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (e) {
+    console.error('خطأ بقراءة القطع من Firestore:', e);
     return [];
   }
 }
 
-function findMatchingParts(possibleIssue, carBrand) {
+async function findMatchingParts(possibleIssue, carBrand) {
   if (!possibleIssue) return [];
   const stopWords = ['في', 'من', 'إلى', 'أو', 'مع', 'عن', 'هذا', 'هذه', 'قد'];
   const keywords = possibleIssue
@@ -76,7 +76,7 @@ function findMatchingParts(possibleIssue, carBrand) {
     .map((w) => w.replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, ''))
     .filter((w) => w.length >= 3 && !stopWords.includes(w));
 
-  const parts = readParts();
+  const parts = await readParts();
   const scored = parts
     .map((p) => {
       let keywordScore = 0;
@@ -241,7 +241,7 @@ router.post('/diagnose', verifyToken, async (req, res) => {
       .trim();
 
     const parsed = JSON.parse(rawText);
-    parsed.matched_parts = findMatchingParts(parsed.possible_issue, car?.brand);
+    parsed.matched_parts = await findMatchingParts(parsed.possible_issue, car?.brand);
 
     if (parsed.matched_parts.length === 0) {
       parsed.external_search = await searchPartOnline(parsed.possible_issue, car);
