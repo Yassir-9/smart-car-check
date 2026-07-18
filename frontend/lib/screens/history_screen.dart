@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -32,7 +33,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _errorText = null;
     });
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/history'));
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/history'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() => _items = data is List ? data : (data['items'] ?? []));
@@ -78,7 +83,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (confirmed != true) return;
 
     try {
-      final response = await http.delete(Uri.parse('$baseUrl/api/history/$id'));
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/history/$id'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
       if (response.statusCode == 200 || response.statusCode == 204) {
         setState(() => _items.removeWhere((e) => e['id'].toString() == id));
       } else {
