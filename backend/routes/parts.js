@@ -27,7 +27,7 @@ router.get('/parts', async (req, res) => {
 
 router.post('/parts', verifyToken, async (req, res) => {
   try {
-    const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
+    const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64, condition, partBrand } = req.body;
     if (!partName || !carBrand || !sellerPhone) {
       return res
         .status(400)
@@ -43,6 +43,8 @@ router.post('/parts', verifyToken, async (req, res) => {
       notes: notes || '',
       oemNumber: oemNumber || null,
       imageBase64: imageBase64 || null,
+      condition: condition || null,
+      partBrand: partBrand || null,
       createdAt: new Date().toISOString(),
     };
     const docRef = await db.collection('parts').add(newPart);
@@ -83,7 +85,7 @@ router.put('/parts/:id', verifyToken, async (req, res) => {
     if (part.ownerId && part.ownerId !== req.uid) {
       return res.status(403).json({ error: 'لا تملك صلاحية تعديل هذه القطعة' });
     }
-    const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64 } = req.body;
+    const { partName, carBrand, carModel, price, sellerPhone, notes, oemNumber, imageBase64, condition, partBrand } = req.body;
     if (!partName || !carBrand || !sellerPhone) {
       return res
         .status(400)
@@ -100,6 +102,8 @@ router.put('/parts/:id', verifyToken, async (req, res) => {
       notes: notes || '',
       oemNumber: oemNumber !== undefined ? oemNumber : part.oemNumber || null,
       imageBase64: imageBase64 !== undefined ? imageBase64 : part.imageBase64 || null,
+      condition: condition !== undefined ? condition : part.condition || null,
+      partBrand: partBrand !== undefined ? partBrand : part.partBrand || null,
     };
     await docRef.set(updated);
     res.json({ id: docRef.id, ...updated });
