@@ -7,6 +7,7 @@ const partsRoutes = require('./routes/parts');
 const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscription');
 const ratingsRoutes = require('./routes/ratings');
+const ordersRoutes = require('./routes/orders');
 
 const app = express();
 app.use(cors());
@@ -18,6 +19,7 @@ app.use('/api', partsRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', subscriptionRoutes);
 app.use('/api', ratingsRoutes);
+app.use('/api', ordersRoutes);
 
 app.get('/', (req, res) => {
   res.send('سيرفر تطبيق تشخيص السيارات الذكي يعمل بنجاح ✅');
