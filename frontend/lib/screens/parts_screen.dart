@@ -24,6 +24,7 @@ class _PartsScreenState extends State<PartsScreen> {
   bool _isLoading = true;
   String? _errorText;
   final TextEditingController _searchController = TextEditingController();
+  final Map<String, Map<String, dynamic>> _sellerRatings = {};
 
   @override
   void initState() {
@@ -51,6 +52,7 @@ class _PartsScreenState extends State<PartsScreen> {
               .map((e) => PartListing.fromJson(e as Map<String, dynamic>))
               .toList();
         });
+        _loadSellerRatings();
       } else {
         setState(() => _errorText = 'خطأ من السيرفر: ${response.statusCode}');
       }
@@ -59,6 +61,112 @@ class _PartsScreenState extends State<PartsScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadSellerRatings() async {
+    final ownerIds = _parts
+        .map((p) => p.ownerId)
+        .whereType<String>()
+        .toSet();
+    for (final ownerId in ownerIds) {
+      if (_sellerRatings.containsKey(ownerId)) continue;
+      try {
+        final response = await http.get(
+          Uri.parse('https://car-ai-backend-7gpb.onrender.com/api/sellers/$ownerId/rating'),
+        );
+        if (response.statusCode == 200 && mounted) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+          setState(() => _sellerRatings[ownerId] = data);
+        }
+      } catch (e) {
+        // تجاهل فشل تحميل تقييم بائع معيّن
+      }
+    }
+  }
+
+  Future<void> _showRateSellerDialog(String sellerId) async {
+    int selectedStars = 0;
+    final commentController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('قيّم البائع'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (i) {
+                      return IconButton(
+                        onPressed: () => setDialogState(() => selectedStars = i + 1),
+                        icon: Icon(
+                          i < selectedStars ? Icons.star : Icons.star_border,
+                          color: const Color(0xFFFFA000),
+                          size: 28,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: commentController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      hintText: 'تعليق (اختياري)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: selectedStars == 0
+                      ? null
+                      : () async {
+                          try {
+                            final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+                            final response = await http.post(
+                              Uri.parse(
+                                  'https://car-ai-backend-7gpb.onrender.com/api/sellers/$sellerId/rating'),
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer $token',
+                              },
+                              body: jsonEncode({
+                                'rating': selectedStars,
+                                'comment': commentController.text.trim(),
+                              }),
+                            );
+                            if (dialogContext.mounted) Navigator.pop(dialogContext);
+                            if (response.statusCode == 200) {
+                              _sellerRatings.remove(sellerId);
+                              _loadSellerRatings();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('تم إرسال تقييمك، شكراً 🙏')),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (dialogContext.mounted) Navigator.pop(dialogContext);
+                          }
+                        },
+                  child: const Text('إرسال'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   List<PartListing> get _filteredParts {
@@ -277,6 +385,21 @@ FirebaseAuth.instance.currentUser?.uid)
                                           Text(part.notes!,
                                               style: const TextStyle(fontSize: 13)),
                                         ],
+                                        if (part.ownerId != null &&
+                                            _sellerRatings[part.ownerId!]?['average'] != null) ...[
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.star, color: Color(0xFFFFA000), size: 15),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '${_sellerRatings[part.ownerId!]!['average']} '
+                                                '(${_sellerRatings[part.ownerId!]!['count']} تقييم)',
+                                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                         const SizedBox(height: 10),
                                         SizedBox(
                                           width: double.infinity,
@@ -286,6 +409,18 @@ FirebaseAuth.instance.currentUser?.uid)
                                             label: Text('اتصال: ${part.sellerPhone}'),
                                           ),
                                         ),
+                                        if (part.ownerId != null &&
+                                            part.ownerId != FirebaseAuth.instance.currentUser?.uid) ...[
+                                          const SizedBox(height: 6),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: TextButton.icon(
+                                              onPressed: () => _showRateSellerDialog(part.ownerId!),
+                                              icon: const Icon(Icons.star_border, size: 16),
+                                              label: const Text('قيّم هذا البائع'),
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
