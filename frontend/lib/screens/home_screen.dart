@@ -793,6 +793,137 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showAskExpertSheet() {
+    final questionController = TextEditingController();
+    String? answer;
+    bool isAsking = false;
+    String? errorText;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            Future<void> submitQuestion() async {
+              if (questionController.text.trim().isEmpty || isAsking) return;
+              setSheetState(() {
+                isAsking = true;
+                errorText = null;
+                answer = null;
+              });
+              try {
+                final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+                final response = await http.post(
+                  Uri.parse('https://car-ai-backend-7gpb.onrender.com/api/ask-expert'),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    if (idToken != null) 'Authorization': 'Bearer $idToken',
+                  },
+                  body: jsonEncode({
+                    'question': questionController.text.trim(),
+                    'diagnosis': _result,
+                    'car': {
+                      'brand': _activeCar?.brand,
+                      'model': _activeCar?.model,
+                      'year': _activeCar?.year,
+                    },
+                  }),
+                );
+                if (response.statusCode == 200) {
+                  final data = jsonDecode(utf8.decode(response.bodyBytes));
+                  setSheetState(() {
+                    answer = data['answer'];
+                    isAsking = false;
+                  });
+                } else {
+                  setSheetState(() {
+                    errorText = 'تعذر الحصول على إجابة، حاول مرة أخرى';
+                    isAsking = false;
+                  });
+                }
+              } catch (e) {
+                setSheetState(() {
+                  errorText = 'تعذر الاتصال بالسيرفر';
+                  isAsking = false;
+                });
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.support_agent, color: Color(0xFF1E3A5F)),
+                      const SizedBox(width: 8),
+                      const Text('اسأل خبير السيارات الذكي',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: questionController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'مثال: هل أستطيع السفر بالسيارة الآن؟',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isAsking ? null : submitQuestion,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E3A5F),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: isAsking
+                          ? const SizedBox(
+                              height: 18, width: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('إرسال السؤال'),
+                    ),
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 10),
+                    Text(errorText!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                  ],
+                  if (answer != null) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F4F8),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(answer!, style: const TextStyle(fontSize: 14, height: 1.6)),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildResultCard() {
     final severity = _result!['severity'] as String?;
     final color = _severityColor(severity);
@@ -1118,6 +1249,19 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               icon: const Icon(Icons.build_outlined, size: 18),
               label: const Text('ابحث عن قطعة الغيار المطلوبة'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _showAskExpertSheet,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A5F),
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.support_agent, size: 18),
+              label: const Text('اسأل خبير السيارات الذكي'),
             ),
           ),
           if (_result!['diagnosis_id'] != null) ...[
