@@ -1027,30 +1027,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 12),
-          Text(_result!['explanation'] ?? '',
-              style: const TextStyle(fontSize: 14, height: 1.6)),
-          if (_result!['recommendations'] != null) ...[
-            const SizedBox(height: 12),
-            const Text('التوصيات:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 6),
-            ...List<String>.from(_result!['recommendations']).map(
-              (r) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.check_circle,
-                        size: 16, color: Color(0xFF1E3A5F)),
-                    const SizedBox(width: 6),
-                    Expanded(
-                        child: Text(r, style: const TextStyle(fontSize: 13))),
-                  ],
-                ),
-              ),
-            ),
-          ],
           if (_result!['estimated_cost'] != null &&
               _result!['estimated_cost'] != 'null') ...[
             const SizedBox(height: 14),
@@ -1094,6 +1070,31 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 12),
+          Text(_result!['explanation'] ?? '',
+              style: const TextStyle(fontSize: 14, height: 1.6)),
+          if (_result!['recommendations'] != null) ...[
+            const SizedBox(height: 12),
+            const Text('التوصيات:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const SizedBox(height: 6),
+            ...List<String>.from(_result!['recommendations']).map(
+              (r) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.check_circle,
+                        size: 16, color: Color(0xFF1E3A5F)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                        child: Text(r, style: const TextStyle(fontSize: 13))),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
           if (_result!['matched_parts'] != null &&
               (_result!['matched_parts'] as List).isNotEmpty) ...[
             const SizedBox(height: 14),
