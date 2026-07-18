@@ -307,4 +307,48 @@ router.patch('/history/:id/feedback', (req, res) => {
   res.json({ success: true });
 });
 
+router.post('/ask-expert', verifyToken, async (req, res) => {
+  try {
+    const { question, diagnosis, car } = req.body;
+    if (!question || !question.trim()) {
+      return res.status(400).json({ error: 'السؤال مطلوب' });
+    }
+
+    const contextText = diagnosis
+      ? `سياق التشخيص السابق للسيارة:
+المشكلة: ${diagnosis.possible_issue || ''}
+الخطورة: ${diagnosis.severity || ''}
+هل يمكن القيادة: ${diagnosis.can_drive || ''}
+الشرح: ${diagnosis.explanation || ''}
+السيارة: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`
+      : `السيارة: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`;
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      system: `أنت خبير سيارات ذكي وودود تجيب على أسئلة المستخدم المتابعة بعد تشخيص أولي لسيارته.
+أجب بالعربي بشكل مباشر ومختصر ومفهوم لغير المتخصصين، بدون مقدمات طويلة.
+لو السؤال يخص القيادة أو السلامة، كن واضحاً وحاسماً.
+لا تكرر معلومات التشخيص الأصلي إلا لو ضروري للإجابة.`,
+      messages: [{
+        role: 'user',
+        content: `${contextText}
+
+سؤال المستخدم: ${question.trim()}`,
+      }],
+    });
+
+    const answer = response.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('\n')
+      .trim();
+
+    res.json({ answer });
+  } catch (error) {
+    console.error('خطأ بمساعد الخبير:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
+  }
+});
+
 module.exports = router;
