@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/obd_session_service.dart';
+import '../models/car_model.dart';
+import '../services/car_service.dart';
 
 class ObdConnectScreen extends StatefulWidget {
   const ObdConnectScreen({super.key});
@@ -32,6 +34,7 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
   String _statusMessage =
       'اضغط "بحث عن أجهزة" لعرض الأجهزة المقترنة ببلوتوث جهازك';
   List<String> _dtcCodes = [];
+  CarModel? _activeCar;
 
   @override
   void initState() {
@@ -40,6 +43,22 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
       _dtcCodes = List.from(ObdSessionService.lastCodes);
       _statusMessage =
           'نتيجة آخر فحص محفوظة (${_dtcCodes.length} كود) — أعد الاتصال للفحص من جديد';
+    }
+    _loadActiveCar();
+  }
+
+  Future<void> _loadActiveCar() async {
+    try {
+      final cars = await CarService.loadCars();
+      final activeId = await CarService.getActiveCarId();
+      if (cars.isNotEmpty) {
+        _activeCar = cars.firstWhere(
+          (c) => c.id == activeId,
+          orElse: () => cars.first,
+        );
+      }
+    } catch (e) {
+      _activeCar = null;
     }
   }
 
@@ -132,14 +151,19 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
     return codes;
   }
 
-  Future<List<String>> _readDtcForHeader(String header) async {
+  Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
     _buffer = '';
     _connection?.writeString('ATSH$header\r');
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 600));
     _buffer = '';
     _connection?.writeString('03\r');
-    await Future.delayed(const Duration(seconds: 2));
-    return _parseDtcResponse(_buffer);
+    await Future.delayed(const Duration(milliseconds: 2500));
+    final raw = _buffer;
+    final upper = raw.toUpperCase();
+    return {
+      'codes': _parseDtcResponse(raw),
+      'reachable': !upper.contains('UNABLE TO CONNECT'),
+    };
   }
 
   Future<void> _readDtcCodes() async {
@@ -149,25 +173,33 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
       _buffer = '';
     });
     try {
-      final engineCodes = await _readDtcForHeader('7E0');
+      final engineResult = await _readDtcForHeader('7E0');
+      final engineCodes = List<String>.from(engineResult['codes']);
 
       setState(() => _statusMessage = 'جاري قراءة أكواد ناقل الحركة (القير)...');
       List<String> transmissionCodes = [];
+      bool transmissionReachable = true;
       try {
-        transmissionCodes = await _readDtcForHeader('7E1');
+        final transResult = await _readDtcForHeader('7E1');
+        transmissionCodes = List<String>.from(transResult['codes']);
+        transmissionReachable = transResult['reachable'] as bool;
       } catch (_) {
         transmissionCodes = [];
+        transmissionReachable = false;
       }
 
       _connection?.writeString('ATSH7DF\r');
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 400));
 
       final combined = <String>{...engineCodes, ...transmissionCodes}.toList();
+      final transNote = !transmissionReachable
+          ? ' (وحدة القير غير متاحة على هذا الجهاز/السيارة)'
+          : '';
       setState(() {
         _dtcCodes = combined;
         _statusMessage = combined.isEmpty
-            ? 'ما فيه أكواد أعطال محفوظة حاليًا ✅ (محرك وقير)'
-            : 'تم العثور على ${combined.length} كود (محرك: ${engineCodes.length}، قير: ${transmissionCodes.length})';
+            ? 'ما فيه أكواد أعطال محفوظة حاليًا ✅ (محرك وقير)$transNote'
+            : 'تم العثور على ${combined.length} كود (محرك: ${engineCodes.length}، قير: ${transmissionCodes.length})$transNote';
       });
       ObdSessionService.save(combined, _connectedDevice?.name);
     } catch (e) {
@@ -358,7 +390,15 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'code': code}),
+        body: jsonEncode({
+          'code': code,
+          if (_activeCar != null)
+            'car': {
+              'brand': _activeCar!.brand,
+              'model': _activeCar!.model,
+              'year': _activeCar!.year,
+            },
+        }),
       );
       if (response.statusCode == 200) {
         return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
