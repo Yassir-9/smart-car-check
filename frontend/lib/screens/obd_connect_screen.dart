@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_classic/flutter_blue_classic.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/obd_session_service.dart';
 
 class ObdConnectScreen extends StatefulWidget {
@@ -205,6 +209,143 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
     });
   }
 
+  void _showPartSearchSheet(String code) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return FutureBuilder<Map<String, dynamic>?>(
+          future: _fetchPartSearch(code),
+          builder: (context, snapshot) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.storefront_outlined, color: Color(0xFF1E3A5F)),
+                      const SizedBox(width: 8),
+                      Text('قطع كود $code',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 30),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (snapshot.data == null || snapshot.data!['found'] != true)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Text('ما لقينا نتائج بحث لهذا الكود حاليًا',
+                          style: TextStyle(color: Colors.grey)),
+                    )
+                  else
+                    ...List<Map<String, dynamic>>.from(snapshot.data!['suggestions'] ?? [])
+                        .map((s) {
+                      final hasUrl = s['url'] != null &&
+                          s['url'].toString().isNotEmpty &&
+                          s['url'] != 'null';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8E1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFFE082)),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: hasUrl
+                                ? () async {
+                                    final uri = Uri.tryParse(s['url']);
+                                    if (uri != null && await canLaunchUrl(uri)) {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    }
+                                  }
+                                : null,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.storefront, size: 20, color: Color(0xFFFFC107)),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(s['name'] ?? '',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold, fontSize: 13)),
+                                        if (s['estimated_price'] != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text('${s['estimated_price']}',
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF2E7D32))),
+                                        ],
+                                        if (s['store_name'] != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text(s['store_name'],
+                                              style: const TextStyle(
+                                                  fontSize: 12, color: Colors.grey)),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  if (hasUrl)
+                                    const Icon(Icons.arrow_outward, size: 18, color: Color(0xFF9E7B1F)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> _fetchPartSearch(String code) async {
+    try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      final response = await http.post(
+        Uri.parse('https://car-ai-backend-7gpb.onrender.com/api/obd/part-search'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'code': code}),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -338,6 +479,11 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontFamily: 'monospace'),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.search, color: Color(0xFF1E3A5F)),
+                      tooltip: 'ابحث عن القطعة المطلوبة',
+                      onPressed: () => _showPartSearchSheet(_dtcCodes[index]),
                     ),
                   ),
                 ),
