@@ -5,6 +5,8 @@ import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/auth_screen.dart';
 import 'theme_notifier.dart';
+import 'locale_notifier.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -28,11 +30,13 @@ class _CarAiAppState extends State<CarAiApp> {
   void initState() {
     super.initState();
     themeNotifier.addListener(_onThemeChanged);
+    localeNotifier.addListener(_onThemeChanged);
   }
 
   @override
   void dispose() {
     themeNotifier.removeListener(_onThemeChanged);
+    localeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -123,13 +127,21 @@ class _CarAiAppState extends State<CarAiApp> {
     return MaterialApp(
       title: 'تشخيص السيارة الذكي',
       debugShowCheckedModeBanner: false,
-      locale: const Locale('ar'),
+      locale: Locale(localeNotifier.value),
+      supportedLocales: const [Locale('ar'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: _lightTheme(),
       darkTheme: _darkTheme(),
       themeMode: themeNotifier.value ? ThemeMode.dark : ThemeMode.light,
       builder: (context, child) {
         return Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: localeNotifier.value == 'en'
+              ? TextDirection.ltr
+              : TextDirection.rtl,
           child: child!,
         );
       },
