@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme_notifier.dart';
+import '../locale_notifier.dart';
 import '../services/auth_service.dart';
 import 'cars_screen.dart';
 
@@ -15,11 +16,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     themeNotifier.addListener(_onThemeChanged);
+    localeNotifier.addListener(_onThemeChanged);
   }
 
   @override
   void dispose() {
     themeNotifier.removeListener(_onThemeChanged);
+    localeNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 
@@ -65,6 +68,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: isDark,
                     activeThumbColor: const Color(0xFF1E3A5F),
                     onChanged: (_) => themeNotifier.toggle(),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.language, color: Color(0xFF1E3A5F)),
+                    title: const Text('اللغة / Language'),
+                    trailing: DropdownButton<String>(
+                      value: localeNotifier.value,
+                      underline: const SizedBox.shrink(),
+                      items: const [
+                        DropdownMenuItem(value: 'ar', child: Text('العربية')),
+                        DropdownMenuItem(value: 'en', child: Text('English')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) localeNotifier.setLanguage(val);
+                      },
+                    ),
                   ),
                   const Divider(height: 1),
                   ListTile(
