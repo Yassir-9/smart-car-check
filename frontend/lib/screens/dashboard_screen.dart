@@ -29,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<MaintenanceReminder> _reminders = [];
   List<MaintenanceRecord> _records = [];
   Map<String, dynamic>? _lastDiagnosis;
+  List<dynamic> _diagnosisHistory = [];
   Map<String, dynamic>? _subscriptionStatus;
 
   @override
@@ -65,8 +66,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final subResponse = results[4] as http.Response;
 
       Map<String, dynamic>? lastDiagnosis;
+      List<dynamic> diagnosisHistory = [];
       if (historyResponse.statusCode == 200) {
         final list = jsonDecode(utf8.decode(historyResponse.bodyBytes)) as List;
+        diagnosisHistory = list;
         if (list.isNotEmpty) {
           lastDiagnosis = list.first as Map<String, dynamic>;
         }
@@ -83,6 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _reminders = reminders..sort((a, b) => a.dueDate.compareTo(b.dueDate));
         _records = records..sort((a, b) => b.date.compareTo(a.date));
         _lastDiagnosis = lastDiagnosis;
+        _diagnosisHistory = diagnosisHistory;
         _subscriptionStatus = subStatus;
         _isLoading = false;
       });
@@ -173,6 +177,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         _buildRecentRecordsSection(),
                         const SizedBox(height: 16),
                         _buildStatsSection(),
+                        const SizedBox(height: 16),
+                        _buildChartsSection(),
                       ],
                     ),
                   ),
@@ -643,6 +649,161 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
         Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  Widget _buildChartsSection() {
+    if (_diagnosisHistory.isEmpty && _records.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_diagnosisHistory.isNotEmpty) ...[
+          const Text('توزيع خطورة التشخيصات',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 8),
+          _buildSeverityChart(),
+          const SizedBox(height: 16),
+        ],
+        if (_records.isNotEmpty) ...[
+          const Text('تكلفة الصيانة الشهرية (آخر 6 أشهر)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 8),
+          _buildMonthlyCostChart(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSeverityChart() {
+    int high = 0, medium = 0, low = 0;
+    for (final item in _diagnosisHistory) {
+      final result = item['result'] as Map<String, dynamic>?;
+      final severity = result?['severity'] as String?;
+      if (severity == 'عالية') {
+        high++;
+      } else if (severity == 'متوسطة') {
+        medium++;
+      } else if (severity == 'منخفضة') {
+        low++;
+      }
+    }
+    final total = high + medium + low;
+    if (total == 0) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          _severityBar('🔴 عالية', high, total, const Color(0xFFD32F2F)),
+          const SizedBox(height: 10),
+          _severityBar('🟠 متوسطة', medium, total, const Color(0xFFF57C00)),
+          const SizedBox(height: 10),
+          _severityBar('🟢 منخفضة', low, total, const Color(0xFF388E3C)),
+        ],
+      ),
+    );
+  }
+
+  Widget _severityBar(String label, int count, int total, Color color) {
+    final ratio = total == 0 ? 0.0 : count / total;
+    return Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(label, style: const TextStyle(fontSize: 12)),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Stack(
+                  children: [
+                    Container(height: 14, color: color.withValues(alpha: 0.12)),
+                    Container(
+                      height: 14,
+                      width: constraints.maxWidth * ratio,
+                      color: color,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 24,
+          child: Text('$count', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMonthlyCostChart() {
+    final now = DateTime.now();
+    final months = List.generate(6, (i) {
+      final d = DateTime(now.year, now.month - (5 - i), 1);
+      return d;
+    });
+
+    final costs = months.map((m) {
+      double sum = 0;
+      for (final r in _records) {
+        if (r.date.year == m.year && r.date.month == m.month) {
+          sum += double.tryParse(r.cost ?? '') ?? 0;
+        }
+      }
+      return sum;
+    }).toList();
+
+    final maxCost = costs.fold<double>(0, (a, b) => a > b ? a : b);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: SizedBox(
+        height: 120,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: List.generate(6, (i) {
+            final heightRatio = maxCost == 0 ? 0.0 : costs[i] / maxCost;
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (costs[i] > 0)
+                      Text(costs[i].toStringAsFixed(0),
+                          style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                    const SizedBox(height: 4),
+                    Container(
+                      height: 70 * heightRatio + 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E3A5F),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text('${months[i].month}/${months[i].year % 100}',
+                        style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
     );
   }
 }
