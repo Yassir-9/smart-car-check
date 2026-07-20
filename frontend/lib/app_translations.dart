@@ -23,6 +23,14 @@ class AppTranslations {
       'diagnose_button': 'شخّص المشكلة',
       'new_diagnosis': 'بدء تشخيص جديد',
       'attach_warning_light': 'أضف صورة للمبة التحذير (اختياري)',
+      'preferences': 'التفضيلات',
+      'manage_cars': 'إدارة سياراتي',
+      'about_app': 'عن التطبيق',
+      'app_description':
+          'تطبيق يستخدم الذكاء الاصطناعي لتقديم تشخيص أولي توجيهي لمشاكل السيارات بناءً على وصف المستخدم وبيانات السيارة.',
+      'version': 'الإصدار 1.0.0',
+      'disclaimer_text':
+          'هذا التشخيص أولي وتوجيهي فقط، ولا يغني عن فحص فني معتمد من ورشة متخصصة قبل اتخاذ أي قرار يخص السلامة.',
     },
     'en': {
       'app_title': 'Smart Car Diagnosis',
@@ -45,6 +53,14 @@ class AppTranslations {
       'diagnose_button': 'Diagnose problem',
       'new_diagnosis': 'Start new diagnosis',
       'attach_warning_light': 'Add warning light photo (optional)',
+      'preferences': 'Preferences',
+      'manage_cars': 'Manage my cars',
+      'about_app': 'About the app',
+      'app_description':
+          'An app that uses AI to provide an initial guiding diagnosis for car problems based on the user\'s description and car data.',
+      'version': 'Version 1.0.0',
+      'disclaimer_text':
+          'This is an initial guiding diagnosis only, and does not replace a certified technical inspection at a specialized workshop before making any safety-related decision.',
     },
   };
 

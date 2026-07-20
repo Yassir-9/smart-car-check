@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme_notifier.dart';
 import '../locale_notifier.dart';
+import '../app_translations.dart';
 import '../services/auth_service.dart';
 import 'cars_screen.dart';
 
@@ -37,14 +38,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الإعدادات'),
+        title: Text(AppTranslations.t('settings')),
         centerTitle: true,
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildSectionTitle('التفضيلات'),
+            _buildSectionTitle(AppTranslations.t('preferences')),
             Container(
               decoration: BoxDecoration(
                 color: cardColor,
@@ -64,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       isDark ? Icons.dark_mode : Icons.light_mode,
                       color: const Color(0xFF1E3A5F),
                     ),
-                    title: const Text('الوضع الداكن'),
+                    title: Text(AppTranslations.t('dark_mode')),
                     value: isDark,
                     activeThumbColor: const Color(0xFF1E3A5F),
                     onChanged: (_) => themeNotifier.toggle(),
@@ -89,7 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     leading: const Icon(Icons.directions_car_filled,
                         color: Color(0xFF1E3A5F)),
-                    title: const Text('إدارة سياراتي'),
+                    title: Text(AppTranslations.t('manage_cars')),
                     trailing: const Icon(Icons.chevron_left, size: 20),
                     onTap: () {
                       Navigator.push(
@@ -103,7 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            _buildSectionTitle('عن التطبيق'),
+            _buildSectionTitle(AppTranslations.t('about_app')),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -137,22 +138,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Colors.white, size: 24),
                       ),
                       const SizedBox(width: 12),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('تشخيص السيارة الذكي',
-                              style: TextStyle(
+                          Text(AppTranslations.t('app_title'),
+                              style: const TextStyle(
                                   fontSize: 15, fontWeight: FontWeight.bold)),
-                          Text('الإصدار 1.0.0',
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text(AppTranslations.t('version'),
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey)),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'تطبيق يستخدم الذكاء الاصطناعي لتقديم تشخيص أولي توجيهي لمشاكل السيارات بناءً على وصف المستخدم وبيانات السيارة.',
+                    AppTranslations.t('app_description'),
                     style: TextStyle(
                         fontSize: 13,
                         height: 1.6,
@@ -177,7 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'هذا التشخيص أولي وتوجيهي فقط، ولا يغني عن فحص فني معتمد من ورشة متخصصة قبل اتخاذ أي قرار يخص السلامة.',
+                      AppTranslations.t('disclaimer_text'),
                       style: TextStyle(fontSize: 12, color: Colors.orange.shade900, height: 1.5),
                     ),
                   ),
@@ -199,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 },
                 icon: const Icon(Icons.logout),
-                label: const Text('تسجيل الخروج'),
+                label: Text(AppTranslations.t('logout')),
               ),
             ),
           ],
