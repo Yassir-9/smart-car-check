@@ -390,7 +390,7 @@ router.post('/obd/part-search', verifyToken, async (req, res) => {
     const info = obdCodes[code];
     const issueText = info
       ? `${info.title_ar} (${info.common_causes.join('، ')})`
-      : code;
+      : `قطعة غيار متعلقة بكود عطل السيارة ${code} (اقرأ رمز OBD-II هذا وابحث عن أشهر أسباب حدوثه والقطعة المرتبطة به)`;
     const result = await searchPartOnline(issueText, car || {});
     res.json(result);
   } catch (error) {
