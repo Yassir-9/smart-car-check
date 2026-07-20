@@ -132,23 +132,44 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
     return codes;
   }
 
+  Future<List<String>> _readDtcForHeader(String header) async {
+    _buffer = '';
+    _connection?.writeString('ATSH$header\r');
+    await Future.delayed(const Duration(milliseconds: 400));
+    _buffer = '';
+    _connection?.writeString('03\r');
+    await Future.delayed(const Duration(seconds: 2));
+    return _parseDtcResponse(_buffer);
+  }
+
   Future<void> _readDtcCodes() async {
     setState(() {
       _isReading = true;
-      _statusMessage = 'جاري قراءة أكواد الأعطال...';
+      _statusMessage = 'جاري قراءة أكواد المحرك...';
       _buffer = '';
     });
     try {
-      _connection?.writeString('03\r');
-      await Future.delayed(const Duration(seconds: 2));
-      final codes = _parseDtcResponse(_buffer);
+      final engineCodes = await _readDtcForHeader('7E0');
+
+      setState(() => _statusMessage = 'جاري قراءة أكواد ناقل الحركة (القير)...');
+      List<String> transmissionCodes = [];
+      try {
+        transmissionCodes = await _readDtcForHeader('7E1');
+      } catch (_) {
+        transmissionCodes = [];
+      }
+
+      _connection?.writeString('ATSH7DF\r');
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      final combined = <String>{...engineCodes, ...transmissionCodes}.toList();
       setState(() {
-        _dtcCodes = codes;
-        _statusMessage = codes.isEmpty
-            ? 'ما فيه أكواد أعطال محفوظة حاليًا ✅'
-            : 'تم العثور على ${codes.length} كود عطل';
+        _dtcCodes = combined;
+        _statusMessage = combined.isEmpty
+            ? 'ما فيه أكواد أعطال محفوظة حاليًا ✅ (محرك وقير)'
+            : 'تم العثور على ${combined.length} كود (محرك: ${engineCodes.length}، قير: ${transmissionCodes.length})';
       });
-      ObdSessionService.save(codes, _connectedDevice?.name);
+      ObdSessionService.save(combined, _connectedDevice?.name);
     } catch (e) {
       setState(() => _statusMessage = 'خطأ بقراءة الأكواد: $e');
     } finally {
@@ -184,6 +205,8 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
       _buffer = '';
     });
     try {
+      _connection?.writeString('ATSH7DF\r');
+      await Future.delayed(const Duration(milliseconds: 300));
       _connection?.writeString('04\r');
       await Future.delayed(const Duration(seconds: 1));
       setState(() {
