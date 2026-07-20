@@ -381,4 +381,22 @@ router.post('/ask-expert', verifyToken, async (req, res) => {
   }
 });
 
+router.post('/obd/part-search', verifyToken, async (req, res) => {
+  try {
+    const { code, car } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: 'كود العطل مطلوب' });
+    }
+    const info = obdCodes[code];
+    const issueText = info
+      ? `${info.title_ar} (${info.common_causes.join('، ')})`
+      : code;
+    const result = await searchPartOnline(issueText, car || {});
+    res.json(result);
+  } catch (error) {
+    console.error('خطأ بالبحث عن قطعة كود OBD:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
+  }
+});
+
 module.exports = router;
