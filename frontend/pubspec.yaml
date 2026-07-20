@@ -19,6 +19,7 @@ dependencies:
   shared_preferences: ^2.5.5
   share_plus: ^13.2.0
   pdf: ^3.13.0
+  barcode: ^2.2.9
   printing: ^5.15.0
   firebase_core: ^4.12.1
   firebase_auth: ^6.5.6
