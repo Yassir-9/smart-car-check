@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../app_translations.dart';
+import '../locale_notifier.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -17,7 +19,18 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _errorText;
 
   @override
+  void initState() {
+    super.initState();
+    localeNotifier.addListener(_onLocaleChanged);
+  }
+
+  void _onLocaleChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    localeNotifier.removeListener(_onLocaleChanged);
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -103,13 +116,15 @@ class _AuthScreenState extends State<AuthScreen> {
                 const Icon(Icons.directions_car, size: 64, color: Color(0xFF1E3A5F)),
                 const SizedBox(height: 16),
                 Text(
-                  _codeSent ? 'أدخل رمز التحقق' : 'تسجيل الدخول برقم الجوال',
+                  _codeSent
+                      ? AppTranslations.t('otp_title')
+                      : AppTranslations.t('login_title'),
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 if (_codeSent)
                   Text(
-                    'أرسلنا رمز تحقق مكوّن من 6 أرقام إلى جوالك',
+                    AppTranslations.t('otp_subtitle'),
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                     textAlign: TextAlign.center,
                   ),
@@ -119,10 +134,10 @@ class _AuthScreenState extends State<AuthScreen> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     textAlign: TextAlign.left,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الجوال',
-                      hintText: '05XXXXXXXX',
-                      prefixIcon: Icon(Icons.phone_iphone_outlined),
+                    decoration: InputDecoration(
+                      labelText: AppTranslations.t('phone_label'),
+                      hintText: AppTranslations.t('phone_hint'),
+                      prefixIcon: const Icon(Icons.phone_iphone_outlined),
                     ),
                   ),
                 ] else ...[
@@ -131,8 +146,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 22, letterSpacing: 6),
-                    decoration: const InputDecoration(
-                      labelText: 'رمز التحقق',
+                    decoration: InputDecoration(
+                      labelText: AppTranslations.t('otp_label'),
                       hintText: '------',
                     ),
                   ),
@@ -151,7 +166,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         ? const SizedBox(
                             width: 20, height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(_codeSent ? 'تأكيد الرمز' : 'إرسال رمز التحقق'),
+                        : Text(_codeSent ? AppTranslations.t('verify_otp') : AppTranslations.t('send_otp')),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -164,7 +179,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               _otpController.clear();
                               _errorText = null;
                             }),
-                    child: const Text('تغيير رقم الجوال'),
+                    child: Text(AppTranslations.t('change_phone')),
                   ),
               ],
             ),
