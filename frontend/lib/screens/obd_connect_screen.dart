@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_classic/flutter_blue_classic.dart';
+import '../services/obd_session_service.dart';
 
 class ObdConnectScreen extends StatefulWidget {
   const ObdConnectScreen({super.key});
@@ -27,6 +28,16 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
   String _statusMessage =
       'اضغط "بحث عن أجهزة" لعرض الأجهزة المقترنة ببلوتوث جهازك';
   List<String> _dtcCodes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (ObdSessionService.hasSavedData) {
+      _dtcCodes = List.from(ObdSessionService.lastCodes);
+      _statusMessage =
+          'نتيجة آخر فحص محفوظة (${_dtcCodes.length} كود) — أعد الاتصال للفحص من جديد';
+    }
+  }
 
   @override
   void dispose() {
@@ -133,6 +144,7 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
             ? 'ما فيه أكواد أعطال محفوظة حاليًا ✅'
             : 'تم العثور على ${codes.length} كود عطل';
       });
+      ObdSessionService.save(codes, _connectedDevice?.name);
     } catch (e) {
       setState(() => _statusMessage = 'خطأ بقراءة الأكواد: $e');
     } finally {
@@ -174,6 +186,7 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
         _dtcCodes = [];
         _statusMessage = '✅ تم مسح جميع أكواد الأعطال بنجاح';
       });
+      ObdSessionService.clear();
     } catch (e) {
       setState(() => _statusMessage = 'خطأ بمسح الأكواد: $e');
     } finally {
@@ -309,28 +322,28 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              if (_dtcCodes.isNotEmpty)
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _dtcCodes.length,
-                    itemBuilder: (context, index) => Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const Icon(Icons.warning_amber,
-                            color: Colors.orange),
-                        title: Text(
-                          _dtcCodes[index],
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace'),
-                        ),
-                      ),
+            ],
+          const SizedBox(height: 16),
+          if (_dtcCodes.isNotEmpty)
+            Expanded(
+              child: ListView.builder(
+                itemCount: _dtcCodes.length,
+                itemBuilder: (context, index) => Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const Icon(Icons.warning_amber,
+                        color: Colors.orange),
+                    title: Text(
+                      _dtcCodes[index],
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace'),
                     ),
                   ),
                 ),
-            ],
-          ],
+              ),
+            ),
+        ],
         ),
       ),
     );

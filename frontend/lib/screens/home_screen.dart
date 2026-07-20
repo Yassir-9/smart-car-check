@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/car_model.dart';
 import '../services/car_service.dart';
+import '../services/diagnosis_session_service.dart';
 import 'history_screen.dart';
 import 'maintenance_screen.dart';
 import 'cars_screen.dart';
@@ -53,6 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _initSpeech();
     _loadActiveCar();
+    if (DiagnosisSessionService.hasSavedResult) {
+      _result = DiagnosisSessionService.lastResult;
+      _descriptionController.text = DiagnosisSessionService.lastDescription ?? '';
+    }
   }
 
   Future<void> _loadActiveCar() async {
@@ -171,6 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorText = null;
       _feedbackSubmitted = false;
     });
+    DiagnosisSessionService.clear();
   }
 
   Future<void> _submitFeedback(bool accurate) async {
@@ -331,6 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _result = data;
           _feedbackSubmitted = false;
         });
+        DiagnosisSessionService.save(data, _descriptionController.text.trim());
       } else if (response.statusCode == 402) {
         setState(() => _errorText =
             'استنفدت عدد التشخيصات المجانية لهذا الشهر (5 تشخيصات). اشترك للاستمرار بدون حدود.');
