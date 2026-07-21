@@ -33,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   bool _isLoading = false;
   bool _feedbackSubmitted = false;
+  bool _isSearchingParts = false;
   Map<String, dynamic>? _result;
   String? _errorText;
 
@@ -177,6 +178,48 @@ class _HomeScreenState extends State<HomeScreen> {
       _feedbackSubmitted = false;
     });
     DiagnosisSessionService.clear();
+  }
+
+  Future<void> _searchPartsOnline() async {
+    if (_result == null) return;
+    setState(() => _isSearchingParts = true);
+    try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      final response = await http.post(
+        Uri.parse('https://car-ai-backend-7gpb.onrender.com/api/parts/external-search'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'query': _result!['possible_issue'],
+          'car': {
+            'brand': _activeCar?.brand,
+            'model': _activeCar?.model,
+            'year': _activeCar?.year,
+          },
+        }),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        setState(() {
+          _result!['external_search'] = data;
+        });
+        DiagnosisSessionService.save(_result!, _descriptionController.text.trim());
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر البحث الآن، حاول مرة أخرى')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر الاتصال بالسيرفر')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSearchingParts = false);
+    }
   }
 
   Future<void> _submitFeedback(bool accurate) async {
@@ -1152,6 +1195,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ],
+          if ((_result!['matched_parts'] == null ||
+                  (_result!['matched_parts'] as List).isEmpty) &&
+              _result!['external_search'] == null) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isSearchingParts ? null : _searchPartsOnline,
+                icon: _isSearchingParts
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.travel_explore, size: 18),
+                label: Text(_isSearchingParts
+                    ? 'جاري البحث...'
+                    : 'ابحث عن القطعة أونلاين'),
               ),
             ),
           ],
