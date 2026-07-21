@@ -326,9 +326,9 @@ Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F8FF),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBBDEFB)),
+                color: const Color(0xFFC9A876).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFC9A876).withValues(alpha: 0.35)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,6 +368,11 @@ Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
                           final d = _pairedDevices[index];
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                            ),
                             child: ListTile(
                               leading: const Icon(Icons.bluetooth),
                               title: Text(d.name ?? 'جهاز غير معروف'),
@@ -388,6 +393,11 @@ Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
               ),
             ] else ...[
               Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                ),
                 child: ListTile(
                   leading: const Icon(Icons.bluetooth_connected,
                       color: Colors.green),
@@ -439,9 +449,21 @@ Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
                 itemCount: _dtcCodes.length,
                 itemBuilder: (context, index) => Card(
                   margin: const EdgeInsets.only(bottom: 8),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                  ),
                   child: ListTile(
-                    leading: const Icon(Icons.warning_amber,
-                        color: Colors.orange),
+                    leading: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFC9A876).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.warning_amber_rounded,
+                          color: Color(0xFFC9A876), size: 18),
+                    ),
                     title: Text(
                       _dtcCodes[index],
                       style: const TextStyle(
