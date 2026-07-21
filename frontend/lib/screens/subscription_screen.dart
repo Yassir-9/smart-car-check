@@ -23,6 +23,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String? _currentPeriodEnd;
   int _freeUsageCount = 0;
   int _freeUsageLimit = 5;
+  String _selectedPlan = 'yearly';
 
   @override
   void initState() {
@@ -102,125 +103,122 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
-  @override
+    @override
   Widget build(BuildContext context) {
+    const goldColor = Color(0xFFC9A876);
+    const navyColor = Color(0xFF1E3A5F);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الاشتراك'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'تحديث الحالة',
-            onPressed: _isLoading ? null : _loadStatus,
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('الاشتراك')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_errorText != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(_errorText!,
-                          style: const TextStyle(color: Colors.red)),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: navyColor,
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (_isActive) ...[
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(16),
-                        border:
-                            Border.all(color: const Color(0xFF66BB6A)),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.verified,
-                              color: Color(0xFF2E7D32), size: 40),
-                          const SizedBox(height: 10),
-                          Text(
-                            _plan == 'yearly'
-                                ? 'أنت مشترك بالباقة السنوية'
-                                : 'أنت مشترك بالباقة الشهرية',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          if (_currentPeriodEnd != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'ينتهي في ${_formatDate(_currentPeriodEnd!)}',
-                              style: const TextStyle(
-                                  fontSize: 13, color: Colors.grey),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          const Text('تشخيصات غير محدودة ✅',
-                              style: TextStyle(fontSize: 13)),
-                        ],
-                      ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          _isActive
+                              ? Icons.workspace_premium
+                              : Icons.workspace_premium_outlined,
+                          color: goldColor,
+                          size: 40,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _isActive ? 'اشتراكك نشط' : 'افتح كامل إمكانيات التطبيق',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _isActive
+                              ? '${_plan == 'yearly' ? 'خطة سنوية' : 'خطة شهرية'} — ينتهي في ${_currentPeriodEnd != null ? _formatDate(_currentPeriodEnd!) : ''}'
+                              : 'استخدمت $_freeUsageCount من $_freeUsageLimit تشخيصات مجانية هذا الشهر',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F8FF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            'استخدمت $_freeUsageCount من $_freeUsageLimit تشخيصات مجانية هذا الشهر',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 14),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 10),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: _freeUsageLimit == 0
-                                  ? 0
-                                  : (_freeUsageCount / _freeUsageLimit)
-                                      .clamp(0, 1),
-                              minHeight: 8,
-                              backgroundColor: const Color(0xFFE0E0E0),
-                              color: _freeUsageCount >= _freeUsageLimit
-                                  ? Colors.red
-                                  : const Color(0xFF1E3A5F),
-                            ),
-                          ),
-                        ],
-                      ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('مميزات الاشتراك',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 12),
+                  _featureRow(Icons.all_inclusive, 'تشخيصات ذكاء اصطناعي غير محدودة',
+                      'شخّص أي عدد من مشاكل سيارتك بدون حد شهري', goldColor),
+                  _featureRow(Icons.support_agent, 'مساعد اسأل خبير السيارات',
+                      'اسأل أي سؤال متابعة بعد كل تشخيص بدون حدود', goldColor),
+                  _featureRow(Icons.picture_as_pdf_outlined, 'تقارير PDF احترافية',
+                      'تقرير كامل برمز QR للتحقق، جاهز للطباعة أو المشاركة', goldColor),
+                  _featureRow(Icons.support, 'أولوية بالدعم الفني',
+                      'ردود أسرع على استفساراتك ومشاكلك التقنية', goldColor),
+                  const SizedBox(height: 28),
+                  if (!_isActive) ...[
+                    const Text('اختر الباقة',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    const SizedBox(height: 12),
+                    _planCard(
+                      plan: 'yearly',
+                      title: 'سنوي',
+                      price: '249',
+                      subtitle: 'أفضل قيمة — يعادل 20.75 ر.س شهريًا',
+                      badge: 'الأفضل قيمة',
+                      goldColor: goldColor,
+                    ),
+                    const SizedBox(height: 10),
+                    _planCard(
+                      plan: 'monthly',
+                      title: 'شهري',
+                      price: '29',
+                      subtitle: 'مرونة الإلغاء بأي وقت',
+                      badge: null,
+                      goldColor: goldColor,
                     ),
                     const SizedBox(height: 20),
-                    const Text('اشترك لتشخيصات غير محدودة',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                    if (_errorText != null) ...[
+                      Text(_errorText!,
+                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                          textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                    ],
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: navyColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: _isSubscribing
+                            ? null
+                            : () => _subscribe(_selectedPlan),
+                        child: _isSubscribing
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Text('اشترك الآن',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ] else if (_errorText != null) ...[
+                    Text(_errorText!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
                         textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    _buildPlanCard(
-                      title: 'شهري',
-                      price: '29 ريال / شهر',
-                      badge: null,
-                      onTap: () => _subscribe('monthly'),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildPlanCard(
-                      title: 'سنوي',
-                      price: '249 ريال / سنة',
-                      badge: 'وفّر 28%',
-                      onTap: () => _subscribe('yearly'),
-                    ),
                   ],
                 ],
               ),
@@ -228,70 +226,98 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPlanCard({
-    required String title,
-    required String price,
-    required String? badge,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFBBDEFB)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: _isSubscribing ? null : onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+  Widget _featureRow(IconData icon, String title, String subtitle, Color accentColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: accentColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(title,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16)),
-                          if (badge != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFC107),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(badge,
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(price,
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                _isSubscribing
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.arrow_forward_ios, size: 16),
+                Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _planCard({
+    required String plan,
+    required String title,
+    required String price,
+    required String subtitle,
+    required String? badge,
+    required Color goldColor,
+  }) {
+    final isSelected = _selectedPlan == plan;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => setState(() => _selectedPlan = plan),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? goldColor : Colors.grey.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
+          ),
+          color: isSelected ? goldColor.withValues(alpha: 0.08) : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.check_circle : Icons.circle_outlined,
+              color: isSelected ? goldColor : Colors.grey,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      if (badge != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: goldColor,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(badge,
+                              style: const TextStyle(
+                                  fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            ),
+            Text('$price ر.س',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
         ),
       ),
     );
