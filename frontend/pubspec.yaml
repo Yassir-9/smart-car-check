@@ -39,6 +39,8 @@ flutter:
   assets:
     - assets/fonts/NotoSansArabic-Regular.ttf
     - assets/data/obd_codes.json
+    - assets/icon/icon.png
+    - assets/icon/icon_mark.png
   fonts:
     - family: NotoSansArabic
       fonts:

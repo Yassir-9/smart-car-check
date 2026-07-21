@@ -102,8 +102,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             colors: [_navy, Color(0xFF3B6EA5)],
                           ),
                         ),
-                        child: const Icon(Icons.directions_car_filled_rounded,
-                            color: Colors.white, size: 24),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/icon/icon_mark.png',
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(

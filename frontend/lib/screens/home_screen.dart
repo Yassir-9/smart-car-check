@@ -553,8 +553,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        const Icon(Icons.directions_car_filled_rounded,
-                            size: 48, color: Colors.white),
+                        ClipOval(
+                          child: Image.asset(
+                            'assets/icon/icon_mark.png',
+                            width: 90,
+                            height: 90,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                         Positioned(
                           bottom: 8,
                           right: 12,
