@@ -6,6 +6,7 @@ import '../models/car_model.dart';
 import '../models/maintenance_reminder.dart';
 import '../models/maintenance_record.dart';
 import '../services/health_score_service.dart';
+import '../widgets/health_gauge.dart';
 import '../services/car_service.dart';
 import '../services/maintenance_service.dart';
 import '../services/maintenance_record_service.dart';
@@ -164,6 +165,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildHeroGauge(),
+                        const SizedBox(height: 16),
                         _buildStatsRow(),
                         const SizedBox(height: 16),
                         _buildSubscriptionCard(),
@@ -183,6 +186,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ),
+    );
+  }
+
+  Widget _buildHeroGauge() {
+    if (_cars.isEmpty) return const SizedBox.shrink();
+
+    final overdue = _reminders
+        .where((r) => !r.isDone && r.dueDate.isBefore(DateTime.now()))
+        .toList();
+
+    final scores = _cars.map((car) {
+      final carRecords = _records.where((r) => r.carId == car.id).toList();
+      return HealthScoreService.calculate(
+        car: car,
+        records: carRecords,
+        overdueReminders: overdue,
+      );
+    }).toList();
+
+    final average =
+        scores.isEmpty ? 0 : (scores.reduce((a, b) => a + b) / scores.length).round();
+
+    return Center(
+      child: Column(
+        children: [
+          HealthGauge(score: average, size: 170),
+          const SizedBox(height: 6),
+          Text(
+            _cars.length > 1 ? 'متوسط صحة سياراتك' : 'صحة سيارتك',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
     );
   }
 
