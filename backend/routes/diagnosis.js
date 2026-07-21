@@ -257,9 +257,7 @@ router.post('/diagnose', verifyToken, async (req, res) => {
     const parsed = JSON.parse(rawText);
     parsed.matched_parts = await findMatchingParts(parsed.possible_issue, car?.brand);
 
-    if (parsed.matched_parts.length === 0) {
-      parsed.external_search = await searchPartOnline(parsed.possible_issue, car);
-    }
+    // البحث الخارجي صار عند الطلب فقط (زر يدوي بالتطبيق) لتوفير تكلفة API
 
     // حفظ تلقائي بالسجل (خاص بالمستخدم فقط)
     const historyId = Date.now().toString();
@@ -395,6 +393,20 @@ router.post('/obd/part-search', verifyToken, async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('خطأ بالبحث عن قطعة كود OBD:', error);
+    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
+  }
+});
+
+router.post('/parts/external-search', verifyToken, async (req, res) => {
+  try {
+    const { query, car } = req.body;
+    if (!query) {
+      return res.status(400).json({ error: 'وصف المشكلة مطلوب' });
+    }
+    const result = await searchPartOnline(query, car || {});
+    res.json(result);
+  } catch (error) {
+    console.error('خطأ بالبحث اليدوي عن القطعة:', error);
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
 });
