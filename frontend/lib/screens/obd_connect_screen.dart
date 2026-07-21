@@ -148,19 +148,34 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
     return codes;
   }
 
-  Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
-    _buffer = '';
-    _connection?.writeString('ATSH$header\r');
-    await Future.delayed(const Duration(milliseconds: 600));
-    _buffer = '';
-    _connection?.writeString('03\r');
-    await Future.delayed(const Duration(milliseconds: 2500));
-    final raw = _buffer;
-    final upper = raw.toUpperCase();
-    return {
-      'codes': _parseDtcResponse(raw),
-      'reachable': !upper.contains('UNABLE TO CONNECT'),
-    };
+Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
+    Map<String, dynamic> result = {'codes': <String>[], 'reachable': true, 'ambiguous': true};
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+      _buffer = '';
+      _connection?.writeString('ATSH$header\r');
+      await Future.delayed(const Duration(milliseconds: 600));
+      _buffer = '';
+      _connection?.writeString('03\r');
+      await Future.delayed(const Duration(milliseconds: 3000));
+      final raw = _buffer;
+      final upper = raw.toUpperCase();
+      final codes = _parseDtcResponse(raw);
+      final unableToConnect = upper.contains('UNABLE TO CONNECT');
+      final confirmedEmpty = upper.contains('NO DATA');
+      final ambiguous = codes.isEmpty && !unableToConnect && !confirmedEmpty && raw.trim().length < 6;
+
+      result = {
+        'codes': codes,
+        'reachable': !unableToConnect,
+        'ambiguous': ambiguous,
+      };
+
+      if (!ambiguous) break;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    return result;
   }
 
   Future<void> _readDtcCodes() async {
@@ -171,6 +186,15 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
     });
     try {
       final engineResult = await _readDtcForHeader('7E0');
+      final engineAmbiguous = engineResult['ambiguous'] as bool;
+
+      if (engineAmbiguous) {
+        setState(() {
+          _statusMessage = 'تعذر إتمام الفحص (اتصال غير مستقر) — النتيجة السابقة محفوظة، أعد المحاولة';
+        });
+        return;
+      }
+
       final engineCodes = List<String>.from(engineResult['codes']);
 
       setState(() => _statusMessage = 'جاري قراءة أكواد ناقل الحركة (القير)...');
@@ -205,7 +229,6 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
       setState(() => _isReading = false);
     }
   }
-
   Future<void> _clearDtcCodes() async {
     final confirmed = await showDialog<bool>(
       context: context,
