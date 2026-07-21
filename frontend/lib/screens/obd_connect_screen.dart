@@ -5,6 +5,7 @@ import 'package:flutter_blue_classic/flutter_blue_classic.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/obd_session_service.dart';
 import '../models/car_model.dart';
+import 'dtc_reference_screen.dart';
 import '../services/car_service.dart';
 
 class ObdConnectScreen extends StatefulWidget {
@@ -302,7 +303,21 @@ Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('ربط جهاز OBD-II')),
+      appBar: AppBar(
+        title: const Text('ربط جهاز OBD-II'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book_outlined),
+            tooltip: 'دليل أكواد الأعطال',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DtcReferenceScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
