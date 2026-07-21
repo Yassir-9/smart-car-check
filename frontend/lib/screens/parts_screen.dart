@@ -340,8 +340,8 @@ class _PartsScreenState extends State<PartsScreen> {
                                                     horizontal: 8, vertical: 3),
                                                 decoration: BoxDecoration(
                                                   color: part.condition == 'جديدة'
-                                                      ? const Color(0xFFE3F2FD)
-                                                      : const Color(0xFFF3E5F5),
+                                                      ? const Color(0xFFC9A876).withValues(alpha: 0.15)
+                                                      : const Color(0xFF1E3A5F).withValues(alpha: 0.1),
                                                   borderRadius: BorderRadius.circular(20),
                                                 ),
                                                 child: Text(
@@ -350,8 +350,8 @@ class _PartsScreenState extends State<PartsScreen> {
                                                       fontSize: 11,
                                                       fontWeight: FontWeight.bold,
                                                       color: part.condition == 'جديدة'
-                                                          ? const Color(0xFF1565C0)
-                                                          : const Color(0xFF7B1FA2)),
+                                                          ? const Color(0xFF8A6D3B)
+                                                          : const Color(0xFF1E3A5F)),
                                                 ),
                                               ),
                                             Expanded(
@@ -444,7 +444,7 @@ FirebaseAuth.instance.currentUser?.uid)
                                           const SizedBox(height: 6),
                                           Row(
                                             children: [
-                                              const Icon(Icons.star, color: Color(0xFFFFA000), size: 15),
+                                              const Icon(Icons.star, color: Color(0xFFC9A876), size: 15),
                                               const SizedBox(width: 3),
                                               Text(
                                                 '${_sellerRatings[part.ownerId!]!['average']} '
