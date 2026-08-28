@@ -2,6 +2,22 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_MODEL = 'gemini-3.7-flash';
 const REQUEST_TIMEOUT_MS = 30000;
 const logger = require('../../utils/logger');
+const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
+const MAX_ATTEMPTS = 3;
+
+function retryDelayMs(attempt, retryAfter) {
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+    const date = Date.parse(retryAfter);
+    if (Number.isFinite(date)) return Math.max(0, date - Date.now());
+  }
+  const base = Number(process.env.GEMINI_RETRY_BASE_MS || 1500);
+  const jitter = Math.floor(Math.random() * Math.max(1, base * 0.25));
+  return Math.round(base * (attempt === 1 ? 1 : 2.67) + jitter);
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function modelId(value = process.env.AI_MODEL || DEFAULT_MODEL) {
   const normalized = String(value).trim().replace(/^models\//i, '');
@@ -46,8 +62,9 @@ async function generate({ system, prompt, image, maxOutputTokens = 900, json = f
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response;
-  try {
-    response = await fetch(endpoint, {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       signal: controller.signal,
@@ -62,8 +79,8 @@ async function generate({ system, prompt, image, maxOutputTokens = 900, json = f
         },
         ...(useWebSearch ? { tools: [{ google_search: {} }] } : {}),
       }),
-    });
-  } catch (cause) {
+      });
+    } catch (cause) {
     const timedOut = cause?.name === 'AbortError';
     logger.warn('AI provider request failed', {
       provider: 'gemini',
@@ -75,12 +92,12 @@ async function generate({ system, prompt, image, maxOutputTokens = 900, json = f
     error.provider = 'gemini';
     error.model = model;
     error.endpointPath = new URL(endpoint).pathname;
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
     const googleMessage = safeGoogleMessage(data);
     logger.warn('AI provider request failed', {
       provider: 'gemini',
@@ -94,11 +111,16 @@ async function generate({ system, prompt, image, maxOutputTokens = 900, json = f
     error.provider = 'gemini';
     error.model = model;
     error.endpointPath = new URL(endpoint).pathname;
-    throw error;
+      if (TRANSIENT_STATUSES.has(response.status) && attempt < MAX_ATTEMPTS) {
+        await sleep(retryDelayMs(attempt, response.headers?.get?.('retry-after')));
+        continue;
+      }
+      throw error;
+    }
+    const text = extractText(data);
+    if (!text) throw new Error('Gemini returned an empty response');
+    return text;
   }
-  const text = extractText(data);
-  if (!text) throw new Error('Gemini returned an empty response');
-  return text;
 }
 
 async function healthCheck() {
