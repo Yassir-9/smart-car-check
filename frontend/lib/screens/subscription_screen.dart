@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/pricing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -22,7 +23,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String? _plan;
   String? _currentPeriodEnd;
   int _freeUsageCount = 0;
-  int _freeUsageLimit = 5;
+  int _freeUsageLimit = AppPricing.freeDiagnosesPerMonth;
   String _selectedPlan = 'yearly';
 
   @override
@@ -172,8 +173,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     _planCard(
                       plan: 'yearly',
                       title: 'سنوي',
-                      price: '249',
-                      subtitle: 'أفضل قيمة — يعادل 20.75 ر.س شهريًا',
+                      price: AppPricing.plusYearly,
+                      subtitle: 'أفضل قيمة — يعادل 9.92 ر.س شهريًا',
                       badge: 'الأفضل قيمة',
                       goldColor: goldColor,
                     ),
@@ -181,7 +182,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     _planCard(
                       plan: 'monthly',
                       title: 'شهري',
-                      price: '29',
+                      price: AppPricing.plusMonthly,
                       subtitle: 'مرونة الإلغاء بأي وقت',
                       badge: null,
                       goldColor: goldColor,
