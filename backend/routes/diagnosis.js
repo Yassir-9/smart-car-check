@@ -5,6 +5,7 @@ const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const obdCodes = require('../knowledge_base/obd_codes.json');
 const verifyToken = require('../middleware/auth');
+const { isDevelopmentUsageLimitBypassEnabled, isQaUsageLimitBypassEnabled } = require('../services/diagnosis/usageLimit');
 const { db } = require('../firebaseAdmin');
 
 const anthropic = new Anthropic({
@@ -195,7 +196,17 @@ router.post('/diagnose', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'الوصف أو الصورة مطلوبة' });
     }
 
-    const usageCheck = await checkAndTrackUsage(req.uid);
+    const developmentBypass = isDevelopmentUsageLimitBypassEnabled();
+    const qaBypass = isQaUsageLimitBypassEnabled(req.uid);
+    const usageLimitBypassed = developmentBypass || qaBypass;
+    if (developmentBypass) {
+      console.warn('Development usage limit bypass active');
+    } else if (qaBypass) {
+      console.warn('QA usage limit bypass active for allowlisted test account');
+    }
+    const usageCheck = usageLimitBypassed
+      ? { allowed: true, isActive: false, bypassed: true }
+      : await checkAndTrackUsage(req.uid);
     if (!usageCheck.allowed) {
       return res.status(402).json({
         error: 'استنفدت عدد التشخيصات المجانية لهذا الشهر',
