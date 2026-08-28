@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
-const obdCodes = require('../knowledge_base/obd_codes.json');
 const verifyToken = require('../middleware/auth');
-const { isDevelopmentUsageLimitBypassEnabled, isQaUsageLimitBypassEnabled } = require('../services/diagnosis/usageLimit');
 const { db } = require('../firebaseAdmin');
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const logger = require('../utils/logger');
+const { getAiProvider } = require('../services/ai/aiProvider');
+const { validateDiagnosis, normalizeDiagnosis, fallbackDiagnosis, addLegacyAliases, DIAGNOSIS_RESPONSE_SCHEMA } = require('../services/diagnosis/diagnosisSchema');
+const { normalizeObdCodes, localObdContext, enrichObdResults } = require('../services/diagnosis/obdEnrichment');
+const { createCacheKey, getCachedDiagnosis, setCachedDiagnosis } = require('../services/diagnosis/diagnosisCache');
+const { isDevelopmentUsageLimitBypassEnabled, isQaUsageLimitBypassEnabled } = require('../services/diagnosis/usageLimit');
+const { buildDiagnosisPrompts } = require('../services/diagnosis/diagnosisPrompt');
+const { normalizeDiagnosisImage } = require('../services/diagnosis/diagnosisImage');
+const { generateRepairReview } = require('../services/repairReview/repairReviewService');
 
 const FREE_MONTHLY_LIMIT = 5;
 
@@ -47,7 +47,7 @@ async function saveToHistory(uid, entry) {
     await db.collection('users').doc(uid)
       .collection('history').doc(entry.id).set(entry);
   } catch (e) {
-    console.error('خطأ بحفظ السجل:', e);
+    logger.error('Failed to save diagnosis history', e);
   }
 }
 
@@ -57,7 +57,7 @@ async function getUserHistory(uid) {
       .collection('history').orderBy('timestamp', 'desc').get();
     return snapshot.docs.map((doc) => doc.data());
   } catch (e) {
-    console.error('خطأ بجلب السجل:', e);
+    logger.error('Failed to load diagnosis history', e);
     return [];
   }
 }
@@ -67,7 +67,7 @@ async function readParts() {
     const snapshot = await db.collection('parts').orderBy('createdAt', 'desc').get();
     return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   } catch (e) {
-    console.error('خطأ بقراءة القطع من Firestore:', e);
+    logger.error('Failed to read parts from Firestore', e);
     return [];
   }
 }
@@ -102,33 +102,15 @@ async function findMatchingParts(possibleIssue, carBrand) {
 async function searchPartOnline(possibleIssue, car) {
   try {
     const query = `${car?.brand || ''} ${car?.model || ''} ${car?.year || ''} ${possibleIssue}`;
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1200,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      system: `أنت مساعد يبحث عن قطع غيار سيارات في الإنترنت للسوق السعودي.
-ابحث عن القطعة المطلوبة وأرجع النتيجة فقط ككائن JSON صحيح بدون أي نص قبله أو بعده وبدون علامات markdown، بالشكل التالي بالضبط:
-{
-  "found": true أو false,
-  "suggestions": [
-    {"name": "اسم القطعة", "estimated_price": "نطاق تقديري بالريال أو null", "store_name": "اسم المتجر أو الوكيل", "url": "الرابط المباشر الكامل للصفحة أو المنتج، أو null لو غير متوفر"}
-  ],
-  "summary": "جملة قصيرة توضح أفضل مكان للشراء"
-}
-لو ما لقيت نتائج واضحة أرجع found:false وsuggestions فاضية.`,
-      messages: [{ role: 'user', content: `ابحث عن قطعة غيار: ${query}` }],
+    const rawText = await getAiProvider().generateJson({
+      system: 'ابحث عن قطع سيارات للسوق السعودي. أرجع JSON فقط، ولا تخترع متجرًا أو رابطًا أو سعرًا.',
+      prompt: `ابحث عن: ${query}. المخطط: {"found":boolean,"suggestions":[{"name":string,"estimated_price":string|null,"store_name":string,"url":string|null}],"summary":string|null}. إذا لم تجد مصدرًا واضحًا أرجع found:false.`,
+      maxOutputTokens: 650,
+      useWebSearch: true,
     });
-
-    const rawText = response.content
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
-      .replace(/```json|```/g, '')
-      .trim();
-
-    return JSON.parse(rawText);
+    return JSON.parse(rawText.replace(/```json|```/g, '').trim());
   } catch (e) {
-    console.error('خطأ بالبحث الخارجي:', e);
+    logger.error('External parts search failed', e);
     return { found: false, suggestions: [], summary: null };
   }
 }
@@ -147,7 +129,7 @@ async function findSimilarConfirmedCases(description, carBrand) {
       .orderBy('confirmedAt', 'desc').limit(200).get();
     confirmed = snapshot.docs.map((doc) => doc.data());
   } catch (e) {
-    console.error('خطأ بجلب الحالات المؤكدة:', e);
+    logger.error('Failed to load confirmed diagnoses', e);
     return '';
   }
 
@@ -176,33 +158,27 @@ async function findSimilarConfirmedCases(description, carBrand) {
   return `\n\nملاحظة: عندنا حالات مشابهة سابقة أكّد مستخدمون دقة تشخيصها، استفد منها كمرجع إضافي (لا تنسخها حرفياً، فقط استرشد بها):\n${lines}`;
 }
 
-function buildObdContext(codes) {
-  if (!codes || codes.length === 0) return '';
-  const details = codes
-    .map((code) => {
-      const info = obdCodes[code];
-      if (!info) return `الكود ${code}: غير موجود في قاعدة البيانات المحلية بعد.`;
-      return `الكود ${code} (${info.title_ar}): الأسباب الشائعة هي ${info.common_causes.join('، ')}.`;
-    })
-    .join('\n');
-  return `\n\nمعلومات أكواد الأعطال المقروءة من جهاز الفحص:\n${details}`;
-}
-
 router.post('/diagnose', verifyToken, async (req, res) => {
   try {
-    const { description, car, obd_codes, image } = req.body;
+    const { description, car, obd_codes, image: rawImage } = req.body;
+    const normalizedObdCodes = normalizeObdCodes(obd_codes);
+    const imageResult = normalizeDiagnosisImage(rawImage);
+    if (imageResult.error) {
+      return res.status(400).json({ error: imageResult.error });
+    }
+    const image = imageResult.image;
 
-    if (!description && !image) {
-      return res.status(400).json({ error: 'الوصف أو الصورة مطلوبة' });
+    if (!description && !image && normalizedObdCodes.length === 0) {
+      return res.status(400).json({ error: 'الوصف أو الصورة أو أكواد OBD مطلوبة' });
     }
 
     const developmentBypass = isDevelopmentUsageLimitBypassEnabled();
     const qaBypass = isQaUsageLimitBypassEnabled(req.uid);
     const usageLimitBypassed = developmentBypass || qaBypass;
     if (developmentBypass) {
-      console.warn('Development usage limit bypass active');
+      logger.warn('Development usage limit bypass active');
     } else if (qaBypass) {
-      console.warn('QA usage limit bypass active for allowlisted test account');
+      logger.warn('QA usage limit bypass active for allowlisted test account');
     }
     const usageCheck = usageLimitBypassed
       ? { allowed: true, isActive: false, bypassed: true }
@@ -215,58 +191,64 @@ router.post('/diagnose', verifyToken, async (req, res) => {
       });
     }
 
-    const obdContext = buildObdContext(obd_codes);
-
-    const systemPrompt = `أنت مساعد تشخيص سيارات خبير. مهمتك تحليل وصف المشكلة وأكواد الأعطال (إن وجدت) وإرجاع تشخيص أولي.
-مهم جداً: أرجع فقط كائن JSON صحيح بدون أي نص قبله أو بعده وبدون علامات markdown، بالشكل التالي بالضبط:
-{
-  "possible_issue": "اسم المشكلة المحتملة بالعربي",
-  "severity": "منخفضة" أو "متوسطة" أو "عالية",
-  "confidence_score": رقم من 0 إلى 100 يمثل ثقتك بدقة هذا التشخيص بناءً على وضوح الوصف/الصورة المقدمة,
-  "confidence_reason": "جملة قصيرة توضح سبب نسبة الثقة (مثلاً: الوصف واضح ومحدد، أو: الأعراض عامة وتحتاج فحص مباشر لتأكيد السبب)",
-  "can_drive": "نص واضح يوضح هل يمكن قيادة السيارة الآن أم لا، مثال: يمكنك القيادة بأمان، أو: يمكنك القيادة بحذر لمسافات قصيرة فقط، أو: يجب التوقف عن القيادة فوراً",
-  "explanation": "شرح مبسط للمستخدم غير المتخصص",
-  "recommendations": ["توصية 1", "توصية 2"],
-  "estimated_cost": "نطاق تقديري بالريال السعودي أو null"
-}
-إذا كانت الصورة تحتوي على شاشة جهاز فحص فيها أكواد أعطال (DTC codes)، اقرأ الأكواد الظاهرة بدقة واستخدمها بالتشخيص. إذا كانت صورة للوحة العدادات أو لمبة تحذير، صف ما تراه ووضّح دلالته.
-كن واقعياً وصادقاً بنسبة الثقة: لو الوصف مقتضب أو الصورة غير واضحة، اجعل النسبة معقولة (مثلاً 60-75) وليس مبالغ فيها.
-هذا تشخيص أولي توجيهي فقط وليس بديلاً عن فحص فني متخصص، وضّح ذلك ضمن الشرح لو كانت الحالة تستدعي زيارة ورشة فوراً.`;
-
-    const similarCasesContext = await findSimilarConfirmedCases(description, car?.brand);
-
-    const userText = `سيارة المستخدم: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}
-وصف المشكلة: ${description || 'لم يكتب المستخدم وصفاً نصياً، اعتمد على تحليل الصورة المرفقة بالكامل'}${obdContext}${similarCasesContext}`;
-
-    const userContent = [];
-    if (image?.data) {
-      userContent.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: image.media_type || 'image/jpeg',
-          data: image.data,
-        },
-      });
-    }
-    userContent.push({ type: 'text', text: userText });
-
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userContent }],
+    const obdContext = localObdContext(normalizedObdCodes);
+    const cacheKey = createCacheKey({
+      uid: req.uid,
+      car,
+      description,
+      obdCodes: normalizedObdCodes,
+      image,
     });
+    let diagnosis = await getCachedDiagnosis(db, req.uid, cacheKey);
+    let cacheHit = !!diagnosis;
 
-    const rawText = response.content
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
-      .replace(/```json|```/g, '')
-      .trim();
+    if (!diagnosis) {
+      const schemaDescription = '{"title":string,"summary":string,"severity":"low|medium|high|critical","confidence":number,"can_drive":boolean,"drive_advice":string,"likely_causes":string[],"recommended_checks":string[],"possible_parts":string[],"next_step":string,"workshop_questions":string[],"warnings":string[],"obd_codes":[{"code":string,"meaning":string,"severity":string,"recommended_checks":string[],"possible_parts":string[],"urgent":boolean,"next_step":string}]}';
+      const { system: systemPrompt, prompt } = buildDiagnosisPrompts({
+        car,
+        description,
+        obdContext,
+        hasImage: !!image,
+        schemaDescription,
+      });
+      const provider = getAiProvider();
+      let rawText;
+      let parsedCandidate;
+      let errors = [];
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          rawText = await provider.generateJson({
+            system: systemPrompt,
+            prompt: attempt === 0 || !rawText
+              ? prompt
+              : `صحح الاستجابة التالية لتطابق المخطط فقط دون إضافة معلومات جديدة. الأخطاء: ${errors.join(', ')}\n${rawText}`,
+            image: attempt === 0 ? image : null,
+            maxOutputTokens: 950,
+            responseSchema: DIAGNOSIS_RESPONSE_SCHEMA,
+          });
+          parsedCandidate = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+          errors = validateDiagnosis(parsedCandidate);
+          if (errors.length === 0) break;
+        } catch (error) {
+          errors = ['provider response unavailable or invalid'];
+          logger.warn('AI diagnosis attempt failed', { provider: provider.name, attempt: attempt + 1, error });
+        }
+      }
+      if (errors.length !== 0) {
+        const providerError = new Error(`AI provider ${provider.name} failed to return a valid diagnosis`);
+        providerError.statusCode = 502;
+        providerError.provider = provider.name;
+        throw providerError;
+      }
+      diagnosis = normalizeDiagnosis(parsedCandidate);
+      diagnosis.obd_codes = enrichObdResults(normalizedObdCodes, parsedCandidate?.obd_codes, diagnosis);
+      await setCachedDiagnosis(db, req.uid, cacheKey, diagnosis);
+    }
 
-    const parsed = JSON.parse(rawText);
-    parsed.matched_parts = await findMatchingParts(parsed.possible_issue, car?.brand);
+    const parsed = addLegacyAliases(diagnosis);
+    parsed.obd_analysis = diagnosis.obd_codes;
+    parsed.matched_parts = await findMatchingParts(diagnosis.title, car?.brand);
+    parsed.cache_hit = cacheHit;
 
     // البحث الخارجي صار عند الطلب فقط (زر يدوي بالتطبيق) لتوفير تكلفة API
 
@@ -291,8 +273,11 @@ router.post('/diagnose', verifyToken, async (req, res) => {
 
     res.json(parsed);
   } catch (error) {
-    console.error('خطأ في التشخيص:', error);
-    res.status(500).json({ error: 'حدث خطأ أثناء التحليل، حاول مرة أخرى' });
+    logger.error('Diagnosis request failed', error, { requestId: req.requestId });
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      error: statusCode === 502 ? 'مزود الذكاء الاصطناعي غير متاح حاليًا' : 'حدث خطأ أثناء التحليل، حاول مرة أخرى',
+    });
   }
 });
 
@@ -309,7 +294,7 @@ router.delete('/history/:id', verifyToken, async (req, res) => {
       .collection('history').doc(req.params.id).delete();
     res.json({ success: true });
   } catch (error) {
-    console.error('خطأ بحذف السجل:', error);
+    logger.error('Failed to delete diagnosis history', error, { requestId: req.requestId });
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
 });
@@ -341,7 +326,7 @@ router.patch('/history/:id/feedback', verifyToken, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('خطأ بتسجيل التقييم:', error);
+    logger.error('Failed to save diagnosis feedback', error, { requestId: req.requestId });
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
 });
@@ -362,30 +347,20 @@ router.post('/ask-expert', verifyToken, async (req, res) => {
 السيارة: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`
       : `السيارة: ${car?.brand || ''} ${car?.model || ''} ${car?.year || ''}`;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 600,
+    const answer = await getAiProvider().generateText({
+      maxOutputTokens: 450,
       system: `أنت خبير سيارات ذكي وودود تجيب على أسئلة المستخدم المتابعة بعد تشخيص أولي لسيارته.
 أجب بالعربي بشكل مباشر ومختصر ومفهوم لغير المتخصصين، بدون مقدمات طويلة.
 لو السؤال يخص القيادة أو السلامة، كن واضحاً وحاسماً.
 لا تكرر معلومات التشخيص الأصلي إلا لو ضروري للإجابة.`,
-      messages: [{
-        role: 'user',
-        content: `${contextText}
+      prompt: `${contextText}
 
 سؤال المستخدم: ${question.trim()}`,
-      }],
     });
-
-    const answer = response.content
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
-      .trim();
 
     res.json({ answer });
   } catch (error) {
-    console.error('خطأ بمساعد الخبير:', error);
+    logger.error('Expert assistant request failed', error, { requestId: req.requestId });
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
 });
@@ -396,14 +371,14 @@ router.post('/obd/part-search', verifyToken, async (req, res) => {
     if (!code) {
       return res.status(400).json({ error: 'كود العطل مطلوب' });
     }
-    const info = obdCodes[code];
-    const issueText = info
-      ? `${info.title_ar} (${info.common_causes.join('، ')})`
+    const info = localObdContext(normalizeObdCodes([code]))[0];
+    const issueText = info?.known
+      ? `${info.official_title} (${info.likely_causes.join('، ')})`
       : `قطعة غيار متعلقة بكود عطل السيارة ${code} (اقرأ رمز OBD-II هذا وابحث عن أشهر أسباب حدوثه والقطعة المرتبطة به)`;
     const result = await searchPartOnline(issueText, car || {});
     res.json(result);
   } catch (error) {
-    console.error('خطأ بالبحث عن قطعة كود OBD:', error);
+    logger.error('OBD part search failed', error, { requestId: req.requestId });
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
 });
@@ -417,9 +392,69 @@ router.post('/parts/external-search', verifyToken, async (req, res) => {
     const result = await searchPartOnline(query, car || {});
     res.json(result);
   } catch (error) {
-    console.error('خطأ بالبحث اليدوي عن القطعة:', error);
+    logger.error('Manual part search failed', error, { requestId: req.requestId });
     res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
   }
 });
+
+async function repairReviewHandler(req, res) {
+  try {
+    const { workshopStatement, proposedPart, proposedParts, quotedPrice, car, diagnosis, obd_codes, image: rawImage, openIssues, maintenanceHistory, repairHistory } = req.body;
+    const imageResult = normalizeDiagnosisImage(rawImage);
+    if (imageResult.error) return res.status(400).json({ error: imageResult.error });
+    const image = imageResult.image;
+    const parts = Array.isArray(proposedParts)
+      ? proposedParts.filter((part) => typeof part === 'string' && part.trim()).slice(0, 20)
+      : (typeof proposedPart === 'string' && proposedPart.trim() ? [proposedPart.trim()] : []);
+    if (!String(workshopStatement || '').trim() && parts.length === 0 && !image) {
+      return res.status(400).json({ error: 'أدخل كلام الورشة أو القطع المقترحة أو صورة العرض' });
+    }
+    const codes = normalizeObdCodes(obd_codes);
+    const numericPrice = quotedPrice === null || quotedPrice === undefined || String(quotedPrice).trim() === ''
+      ? null
+      : Number(quotedPrice);
+    const input = {
+      vehicle: { id: car?.id || null, make: car?.brand || car?.make || null, model: car?.model || null, year: car?.year || null, mileage: car?.currentMileage || car?.mileage || null },
+      workshop_statement: String(workshopStatement || '').trim() || null,
+      proposed_parts: parts,
+      quoted_price_sar: Number.isFinite(numericPrice) ? numericPrice : null,
+      previous_diagnosis: diagnosis ? {
+        id: diagnosis.id || diagnosis.diagnosis_id || null,
+        title: diagnosis.title || diagnosis.possible_issue,
+        summary: diagnosis.summary || diagnosis.explanation || null,
+        likely_causes: diagnosis.likely_causes || [],
+        recommended_checks: diagnosis.recommended_checks || diagnosis.recommendations || [],
+      } : null,
+      scanned_obd_codes: localObdContext(codes),
+      open_issues: Array.isArray(openIssues) ? openIssues.slice(0, 10) : [],
+      maintenance_history: Array.isArray(maintenanceHistory) ? maintenanceHistory.slice(0, 10) : [],
+      repair_history: Array.isArray(repairHistory) ? repairHistory.slice(0, 10) : [],
+      quote_image_attached: !!image,
+    };
+    const result = await generateRepairReview({ provider: getAiProvider(), input, image });
+    if (!result.analysis_complete) return res.status(200).json(result);
+    const reviewId = Date.now().toString();
+    result.review_id = reviewId;
+    try {
+      await db.collection('users').doc(req.uid).collection('repair_reviews').doc(reviewId).set({
+        id: reviewId, vehicleId: car?.id || null,
+        diagnosisId: diagnosis?.id || diagnosis?.diagnosis_id || null,
+        obdCodes: codes, transportType: req.body.obdScan?.transportType || null,
+        workshopStatement: input.workshop_statement, proposedParts: parts,
+        quotedPrice: input.quoted_price_sar, result, createdAt: new Date().toISOString(),
+        repairOutcome: null,
+      });
+    } catch (storageError) {
+      logger.warn('Failed to save repair review', { error: storageError, requestId: req.requestId });
+    }
+    return res.json(result);
+  } catch (error) {
+    logger.error('Before-you-pay analysis failed', error, { requestId: req.requestId });
+    return res.status(500).json({ error: 'تعذر مراجعة العرض الآن' });
+  }
+}
+
+router.post('/repair-review', verifyToken, repairReviewHandler);
+router.post('/before-you-pay', verifyToken, repairReviewHandler);
 
 module.exports = router;
