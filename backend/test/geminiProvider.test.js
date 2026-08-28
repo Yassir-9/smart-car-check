@@ -130,6 +130,26 @@ test('does not retry non-transient Gemini 4xx failures', async () => {
   }
 });
 
+test('uses Gemini fallback only after transient primary failure', async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = 'unit-test-key';
+  const urls = [];
+  try {
+    global.fetch = async (url) => {
+      urls.push(String(url));
+      if (urls.length === 1) return { ok: false, status: 503, json: async () => ({}) };
+      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) };
+    };
+    assert.equal(await gemini.generateText({ system: 's', prompt: 'p' }), 'ok');
+    assert.match(urls[0], /gemini-3\.7-flash/);
+    assert.match(urls[1], /gemini-3\.6-flash/);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalKey == null) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = originalKey;
+  }
+});
+
 test('rejects malformed, empty, network, and timeout responses', async () => {
   const originalFetch = global.fetch;
   const originalWarn = console.warn;

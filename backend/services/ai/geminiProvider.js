@@ -1,5 +1,6 @@
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_MODEL = 'gemini-3.7-flash';
+const FALLBACK_MODEL = 'gemini-3.6-flash';
 const REQUEST_TIMEOUT_MS = 30000;
 const logger = require('../../utils/logger');
 const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
@@ -51,8 +52,7 @@ function extractText(data) {
 async function generate({ system, prompt, image, maxOutputTokens = 900, json = false, useWebSearch = false, responseSchema }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-  const model = modelId();
-  const endpoint = endpointFor(model);
+  const primaryModel = modelId();
   const parts = [];
   if (image?.data) {
     parts.push({ inlineData: { mimeType: image.media_type || 'image/jpeg', data: image.data } });
@@ -62,7 +62,10 @@ async function generate({ system, prompt, image, maxOutputTokens = 900, json = f
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response;
+  let model = primaryModel;
+  let fallbackUsed = false;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const endpoint = endpointFor(model);
     try {
       response = await fetch(endpoint, {
       method: 'POST',
@@ -112,6 +115,12 @@ async function generate({ system, prompt, image, maxOutputTokens = 900, json = f
     error.model = model;
     error.endpointPath = new URL(endpoint).pathname;
       if (TRANSIENT_STATUSES.has(response.status) && attempt < MAX_ATTEMPTS) {
+        if (!fallbackUsed && model === primaryModel) {
+          model = FALLBACK_MODEL;
+          fallbackUsed = true;
+          logger.warn('Gemini fallback model selected', { provider: 'gemini', primaryModel, fallbackModel: FALLBACK_MODEL, fallbackUsed: true, status: response.status });
+          continue;
+        }
         await sleep(retryDelayMs(attempt, response.headers?.get?.('retry-after')));
         continue;
       }
