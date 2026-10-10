@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
 import '../config/pricing.dart';
+import '../l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionScreen extends StatefulWidget {
@@ -13,8 +15,7 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  static const String baseUrl =
-      'https://car-ai-backend-7gpb.onrender.com/api';
+  static String get baseUrl => ApiConfig.apiBaseUrl;
 
   bool _isLoading = true;
   bool _isSubscribing = false;
@@ -37,6 +38,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _loadStatus() async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     setState(() {
       _isLoading = true;
       _errorText = null;
@@ -45,7 +48,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       final token = await _getToken();
       final response = await http.get(
         Uri.parse('$baseUrl/subscription/status'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+          'X-App-Locale': locale,
+        },
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -57,16 +63,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _freeUsageLimit = data['freeUsageLimit'] ?? 5;
         });
       } else {
-        setState(() => _errorText = 'تعذر جلب حالة الاشتراك');
+        setState(() => _errorText = l10n.subscriptionStatusLoadFailed);
       }
     } catch (e) {
-      setState(() => _errorText = 'تعذر الاتصال بالسيرفر');
+      setState(() => _errorText = l10n.serverConnectionFailed);
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _subscribe(String plan) async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     setState(() {
       _isSubscribing = true;
       _errorText = null;
@@ -78,8 +86,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-App-Locale': locale,
         },
-        body: jsonEncode({'plan': plan}),
+        body: jsonEncode({
+          'plan': plan,
+          'locale': locale,
+        }),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -89,10 +101,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       } else {
-        setState(() => _errorText = 'تعذر إنشاء عملية الدفع، حاول مرة أخرى');
+        setState(() => _errorText = l10n.paymentCreationFailed);
       }
     } catch (e) {
-      setState(() => _errorText = 'تعذر الاتصال بالسيرفر');
+      setState(() => _errorText = l10n.serverConnectionFailed);
     } finally {
       setState(() => _isSubscribing = false);
     }
@@ -104,13 +116,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     const goldColor = Color(0xFFC9A876);
     const navyColor = Color(0xFF1E3A5F);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الاشتراك')),
+      appBar: AppBar(title: Text(l10n.subscription)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -135,7 +148,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          _isActive ? 'اشتراكك نشط' : 'افتح كامل إمكانيات التطبيق',
+                          _isActive
+                              ? l10n.subscriptionActive
+                              : l10n.unlockFullApp,
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 17,
@@ -145,52 +160,67 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         const SizedBox(height: 6),
                         Text(
                           _isActive
-                              ? '${_plan == 'yearly' ? 'خطة سنوية' : 'خطة شهرية'} — ينتهي في ${_currentPeriodEnd != null ? _formatDate(_currentPeriodEnd!) : ''}'
-                              : 'استخدمت $_freeUsageCount من $_freeUsageLimit تشخيصات مجانية هذا الشهر',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12),
+                              ? l10n.subscriptionEndsOn(
+                                  _plan == 'yearly'
+                                      ? l10n.yearlyPlan
+                                      : l10n.monthlyPlan,
+                                  _currentPeriodEnd != null
+                                      ? _formatDate(_currentPeriodEnd!)
+                                      : '')
+                              : l10n.freeUsageStatus(
+                                  _freeUsageCount, _freeUsageLimit),
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              fontSize: 12),
                           textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text('مميزات الاشتراك',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(l10n.subscriptionBenefits,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15)),
                   const SizedBox(height: 12),
-                  _featureRow(Icons.all_inclusive, 'تشخيصات ذكاء اصطناعي غير محدودة',
-                      'شخّص أي عدد من مشاكل سيارتك بدون حد شهري', goldColor),
-                  _featureRow(Icons.support_agent, 'مساعد اسأل خبير السيارات',
-                      'اسأل أي سؤال متابعة بعد كل تشخيص بدون حدود', goldColor),
-                  _featureRow(Icons.picture_as_pdf_outlined, 'تقارير PDF احترافية',
-                      'تقرير كامل برمز QR للتحقق، جاهز للطباعة أو المشاركة', goldColor),
-                  _featureRow(Icons.support, 'أولوية بالدعم الفني',
-                      'ردود أسرع على استفساراتك ومشاكلك التقنية', goldColor),
+                  _featureRow(Icons.all_inclusive, l10n.unlimitedAiDiagnoses,
+                      l10n.unlimitedAiDiagnosesDescription, goldColor),
+                  _featureRow(Icons.support_agent, l10n.expertAssistant,
+                      l10n.expertAssistantDescription, goldColor),
+                  _featureRow(
+                      Icons.picture_as_pdf_outlined,
+                      l10n.professionalPdfReports,
+                      l10n.professionalPdfReportsDescription,
+                      goldColor),
+                  _featureRow(Icons.support, l10n.prioritySupport,
+                      l10n.prioritySupportDescription, goldColor),
                   const SizedBox(height: 28),
                   if (!_isActive) ...[
-                    const Text('اختر الباقة',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text(l10n.choosePlan,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 12),
                     _planCard(
                       plan: 'yearly',
-                      title: 'سنوي',
+                      title: l10n.yearly,
                       price: AppPricing.plusYearly,
-                      subtitle: 'أفضل قيمة — يعادل 9.92 ر.س شهريًا',
-                      badge: 'الأفضل قيمة',
+                      subtitle: l10n.yearlyValue,
+                      badge: l10n.bestValue,
                       goldColor: goldColor,
                     ),
                     const SizedBox(height: 10),
                     _planCard(
                       plan: 'monthly',
-                      title: 'شهري',
+                      title: l10n.monthly,
                       price: AppPricing.plusMonthly,
-                      subtitle: 'مرونة الإلغاء بأي وقت',
+                      subtitle: l10n.monthlyFlexibility,
                       badge: null,
                       goldColor: goldColor,
                     ),
                     const SizedBox(height: 20),
                     if (_errorText != null) ...[
                       Text(_errorText!,
-                          style: const TextStyle(color: Colors.red, fontSize: 12),
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 12),
                           textAlign: TextAlign.center),
                       const SizedBox(height: 12),
                     ],
@@ -212,8 +242,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2, color: Colors.white))
-                            : const Text('اشترك الآن',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            : Text(l10n.subscribeNow,
+                                style: const TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ] else if (_errorText != null) ...[
@@ -227,7 +258,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _featureRow(IconData icon, String title, String subtitle, Color accentColor) {
+  Widget _featureRow(
+      IconData icon, String title, String subtitle, Color accentColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -247,7 +279,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 2),
                 Text(subtitle,
                     style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
@@ -295,29 +328,35 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   Row(
                     children: [
                       Text(title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 14)),
                       if (badge != null) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: goldColor,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(badge,
                               style: const TextStyle(
-                                  fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(subtitle,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
             ),
-            Text('$price ر.س',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('$price ${AppLocalizations.of(context).sarShort}',
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

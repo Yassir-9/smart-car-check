@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../l10n/app_localizations.dart';
 import '../models/maintenance_record.dart';
 import '../services/maintenance_record_service.dart';
 import '../models/maintenance_reminder.dart';
 import '../services/maintenance_service.dart';
 import '../data/maintenance_categories_data.dart';
+import '../utils/localized_vehicle_text.dart';
 
 class AddMaintenanceRecordScreen extends StatefulWidget {
   final String carId;
@@ -62,8 +64,9 @@ class _AddMaintenanceRecordScreenState
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     if (_workTypeController.text.trim().isEmpty) {
-      setState(() => _errorText = 'اكتب نوع العمل');
+      setState(() => _errorText = l10n.workTypeRequired);
       return;
     }
 
@@ -106,16 +109,17 @@ class _AddMaintenanceRecordScreenState
         final reminders = await MaintenanceService.loadReminders();
         reminders.add(MaintenanceReminder(
           id: '${DateTime.now().millisecondsSinceEpoch}_auto',
-          title: 'موعد $_selectedCategory القادم',
+          title: l10n.nextMaintenanceFor(
+              l10n.maintenanceCategoryName(_selectedCategory)),
           dueDate: nextDue,
-          notes: 'تم إنشاؤه تلقائياً بعد تسجيل صيانة',
+          notes: l10n.autoReminderNote,
         ));
         await MaintenanceService.saveReminders(reminders);
       }
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
-      setState(() => _errorText = 'تعذر الحفظ، حاول مرة أخرى');
+      setState(() => _errorText = l10n.saveFailed);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -123,21 +127,23 @@ class _AddMaintenanceRecordScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('إضافة سجل صيانة')),
+      appBar: AppBar(title: Text(l10n.addMaintenanceRecord)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('نوع الصيانة',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.maintenanceCategory,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               initialValue: _selectedCategory,
               isExpanded: true,
               items: MaintenanceCategoriesData.categories
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .map((c) => DropdownMenuItem(
+                      value: c, child: Text(l10n.maintenanceCategoryName(c))))
                   .toList(),
               onChanged: (val) {
                 if (val != null) {
@@ -151,41 +157,41 @@ class _AddMaintenanceRecordScreenState
               },
             ),
             const SizedBox(height: 16),
-            const Text('وصف العمل (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.workDescriptionOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _workTypeController,
-              decoration:
-                  const InputDecoration(hintText: 'مثال: تغيير الزيت + الفلتر'),
+              decoration: InputDecoration(hintText: l10n.workDescriptionHint),
             ),
             const SizedBox(height: 16),
-            const Text('الكيلومترات عند الصيانة (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.serviceMileageOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _mileageController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: 'مثال: 85000'),
+              decoration: const InputDecoration(hintText: '85000'),
             ),
             const SizedBox(height: 16),
-            const Text('رقم القطعة (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.partNumberOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _partNumberController,
-              decoration: const InputDecoration(hintText: 'مثال: 90915-YZZD4'),
+              decoration: InputDecoration(hintText: l10n.partNumberHint),
             ),
             const SizedBox(height: 16),
-            const Text('الورشة (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.workshopNameOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _workshopController,
-              decoration: const InputDecoration(hintText: 'اسم الورشة'),
+              decoration: InputDecoration(hintText: l10n.workshopNameHint),
             ),
             const SizedBox(height: 16),
-            const Text('التاريخ', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.date,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -202,31 +208,31 @@ class _AddMaintenanceRecordScreenState
                     );
                     if (picked != null) setState(() => _date = picked);
                   },
-                  child: const Text('تغيير'),
+                  child: Text(l10n.change),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            const Text('التكلفة (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.costOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _costController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: 'مثال: 250'),
+              decoration: const InputDecoration(hintText: '250'),
             ),
             const SizedBox(height: 16),
-            const Text('ملاحظات (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.notesOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _notesController,
               maxLines: 3,
-              decoration: const InputDecoration(hintText: 'تفاصيل إضافية'),
+              decoration: InputDecoration(hintText: l10n.additionalDetailsHint),
             ),
             const SizedBox(height: 16),
-            const Text('صورة الفاتورة (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.invoiceImageOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             _invoiceImage != null
                 ? Stack(
@@ -251,7 +257,7 @@ class _AddMaintenanceRecordScreenState
                 : OutlinedButton.icon(
                     onPressed: _pickImage,
                     icon: const Icon(Icons.image_outlined),
-                    label: const Text('إرفاق صورة الفاتورة'),
+                    label: Text(l10n.attachInvoice),
                   ),
             if (_errorText != null) ...[
               const SizedBox(height: 12),
@@ -269,7 +275,7 @@ class _AddMaintenanceRecordScreenState
                         height: 20,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text('حفظ السجل'),
+                    : Text(l10n.saveRecord),
               ),
             ),
           ],

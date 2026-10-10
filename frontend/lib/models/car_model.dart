@@ -3,6 +3,7 @@ class CarModel {
   final String brand;
   final String model;
   final int year;
+  final int? currentMileage;
   final String? vin;
   final String? engineType;
   final String? transmissionType;
@@ -15,6 +16,7 @@ class CarModel {
     required this.brand,
     required this.model,
     required this.year,
+    this.currentMileage,
     this.vin,
     this.engineType,
     this.transmissionType,
@@ -28,6 +30,7 @@ class CarModel {
         'brand': brand,
         'model': model,
         'year': year,
+        'currentMileage': currentMileage,
         'vin': vin,
         'engineType': engineType,
         'transmissionType': transmissionType,
@@ -43,6 +46,9 @@ class CarModel {
         year: json['year'] is int
             ? json['year']
             : int.tryParse(json['year'].toString()) ?? 0,
+        currentMileage: json['currentMileage'] is int
+            ? json['currentMileage']
+            : int.tryParse(json['currentMileage']?.toString() ?? ''),
         vin: json['vin'],
         engineType: json['engineType'],
         transmissionType: json['transmissionType'],

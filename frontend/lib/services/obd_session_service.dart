@@ -1,19 +1,20 @@
-class ObdSessionService {
-  static List<String> lastCodes = [];
-  static String? lastDeviceName;
-  static DateTime? lastScanTime;
+import '../models/obd_scan_result.dart';
 
-  static void save(List<String> codes, String? deviceName) {
-    lastCodes = codes;
-    lastDeviceName = deviceName;
-    lastScanTime = DateTime.now();
+class ObdSessionService {
+  static ObdScanResult? _lastResult;
+
+  static ObdScanResult? get lastResult => _lastResult;
+  static List<String> get lastCodes => _lastResult?.codes ?? const <String>[];
+  static String? get lastDeviceName => _lastResult?.deviceName;
+  static DateTime? get lastScanTime => _lastResult?.timestamp;
+
+  static void save(ObdScanResult result) {
+    _lastResult = result;
   }
 
   static void clear() {
-    lastCodes = [];
-    lastDeviceName = null;
-    lastScanTime = null;
+    _lastResult = null;
   }
 
-  static bool get hasSavedData => lastCodes.isNotEmpty;
+  static bool get hasSavedData => _lastResult != null;
 }

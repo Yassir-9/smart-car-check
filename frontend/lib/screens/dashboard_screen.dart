@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
 import 'package:http/http.dart' as http;
 import '../models/car_model.dart';
 import '../models/maintenance_reminder.dart';
@@ -21,7 +22,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const String _baseUrl = 'https://car-ai-backend-7gpb.onrender.com';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   bool _isLoading = true;
   String? _errorText;
@@ -57,7 +58,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         MaintenanceService.loadReminders(),
         MaintenanceRecordService.loadRecords(),
         http.get(Uri.parse('$_baseUrl/api/history'), headers: headers),
-        http.get(Uri.parse('$_baseUrl/api/subscription/status'), headers: headers),
+        http.get(Uri.parse('$_baseUrl/api/subscription/status'),
+            headers: headers),
       ]);
 
       final cars = results[0] as List<CarModel>;
@@ -78,7 +80,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       Map<String, dynamic>? subStatus;
       if (subResponse.statusCode == 200) {
-        subStatus = jsonDecode(utf8.decode(subResponse.bodyBytes)) as Map<String, dynamic>;
+        subStatus = jsonDecode(utf8.decode(subResponse.bodyBytes))
+            as Map<String, dynamic>;
       }
 
       if (!mounted) return;
@@ -100,17 +103,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  int get _upcomingRemindersCount =>
-      _reminders.where((r) => !r.isDone && r.dueDate.isAfter(DateTime.now())).length;
+  int get _upcomingRemindersCount => _reminders
+      .where((r) => !r.isDone && r.dueDate.isAfter(DateTime.now()))
+      .length;
 
-  int get _overdueRemindersCount =>
-      _reminders.where((r) => !r.isDone && r.dueDate.isBefore(DateTime.now())).length;
+  int get _overdueRemindersCount => _reminders
+      .where((r) => !r.isDone && r.dueDate.isBefore(DateTime.now()))
+      .length;
 
   Color _carStatusColor(CarModel car) {
     final now = DateTime.now();
-    final dates = [car.insuranceExpiry, car.registrationExpiry, car.inspectionExpiry]
-        .whereType<DateTime>()
-        .toList();
+    final dates = [
+      car.insuranceExpiry,
+      car.registrationExpiry,
+      car.inspectionExpiry
+    ].whereType<DateTime>().toList();
     if (dates.isEmpty) return Colors.grey;
     final hasExpired = dates.any((d) => d.isBefore(now));
     if (hasExpired) return const Color(0xFFD32F2F);
@@ -205,8 +212,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }).toList();
 
-    final average =
-        scores.isEmpty ? 0 : (scores.reduce((a, b) => a + b) / scores.length).round();
+    final average = scores.isEmpty
+        ? 0
+        : (scores.reduce((a, b) => a + b) / scores.length).round();
 
     return Center(
       child: Column(
@@ -306,15 +314,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: isActive ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: isActive
-                  ? const Color(0xFF66BB6A)
-                  : const Color(0xFFFFB74D)),
+              color:
+                  isActive ? const Color(0xFF66BB6A) : const Color(0xFFFFB74D)),
         ),
         child: Row(
           children: [
             Icon(
-              isActive ? Icons.workspace_premium : Icons.workspace_premium_outlined,
-              color: isActive ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+              isActive
+                  ? Icons.workspace_premium
+                  : Icons.workspace_premium_outlined,
+              color:
+                  isActive ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -325,7 +335,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     isActive
                         ? 'اشتراكك نشط (${plan == 'yearly' ? 'سنوي' : 'شهري'})'
                         : 'الباقة المجانية',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -385,7 +396,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: Text(
                   result?['possible_issue'] ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
             ],
@@ -393,7 +405,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (result?['can_drive'] != null) ...[
             const SizedBox(height: 6),
             Text(result!['can_drive'],
-                style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    fontSize: 12, color: color, fontWeight: FontWeight.w600)),
           ],
         ],
       ),
@@ -434,7 +447,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   width: 10,
                   height: 10,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -442,16 +456,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('${car.brand} ${car.model} ${car.year}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
                       Text(_carStatusLabel(car),
                           style: TextStyle(fontSize: 11.5, color: color)),
                     ],
                   ),
                 ),
                 Builder(builder: (context) {
-                  final carRecords = _records.where((r) => r.carId == car.id).toList();
+                  final carRecords =
+                      _records.where((r) => r.carId == car.id).toList();
                   final overdue = _reminders
-                      .where((r) => !r.isDone && r.dueDate.isBefore(DateTime.now()))
+                      .where((r) =>
+                          !r.isDone && r.dueDate.isBefore(DateTime.now()))
                       .toList();
                   final score = HealthScoreService.calculate(
                     car: car,
@@ -466,7 +483,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ? const Color(0xFFF57C00)
                               : const Color(0xFFD32F2F);
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     margin: const EdgeInsets.only(left: 6),
                     decoration: BoxDecoration(
                       color: scoreColor.withValues(alpha: 0.12),
@@ -474,7 +492,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     child: Text('$score%',
                         style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold, color: scoreColor)),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: scoreColor)),
                   );
                 }),
                 IconButton(
@@ -484,7 +504,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => MaintenanceHistoryScreen(car: car)),
+                          builder: (context) =>
+                              MaintenanceHistoryScreen(car: car)),
                     );
                   },
                 ),
@@ -517,7 +538,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         else
           ...upcoming.map((r) {
             final isOverdue = r.dueDate.isBefore(DateTime.now());
-            final color = isOverdue ? const Color(0xFFD32F2F) : const Color(0xFFF57C00);
+            final color =
+                isOverdue ? const Color(0xFFD32F2F) : const Color(0xFFF57C00);
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
@@ -529,7 +551,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Row(
                 children: [
                   Icon(
-                    isOverdue ? Icons.error_outline : Icons.notifications_outlined,
+                    isOverdue
+                        ? Icons.error_outline
+                        : Icons.notifications_outlined,
                     color: color,
                     size: 18,
                   ),
@@ -539,7 +563,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(r.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
                         Text(
                           '${r.dueDate.year}/${r.dueDate.month}/${r.dueDate.day}'
                           '${isOverdue ? ' (متأخر)' : ''}',
@@ -585,24 +610,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.build_outlined, size: 18, color: Color(0xFF1E3A5F)),
+                  const Icon(Icons.build_outlined,
+                      size: 18, color: Color(0xFF1E3A5F)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(rec.workType,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        Text('${rec.date.year}/${rec.date.month}/${rec.date.day}'
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(
+                            '${rec.date.year}/${rec.date.month}/${rec.date.day}'
                             '${rec.workshop != null ? ' - ${rec.workshop}' : ''}',
-                            style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
+                            style: const TextStyle(
+                                fontSize: 11.5, color: Colors.grey)),
                       ],
                     ),
                   ),
                   if (rec.cost != null)
                     Text('${rec.cost} ﷼',
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF2E7D32))),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: Color(0xFF2E7D32))),
                 ],
               ),
             );
@@ -662,12 +693,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           child: Column(
             children: [
-              _statRow('إجمالي تكلفة الصيانة', '${totalCost.toStringAsFixed(0)} ر.س'),
+              _statRow('إجمالي تكلفة الصيانة',
+                  '${totalCost.toStringAsFixed(0)} ر.س'),
               const Divider(height: 20),
-              _statRow('تكلفة هذا العام', '${costThisYear.toStringAsFixed(0)} ر.س'),
+              _statRow(
+                  'تكلفة هذا العام', '${costThisYear.toStringAsFixed(0)} ر.س'),
               if (mostCommon != null) ...[
                 const Divider(height: 20),
-                _statRow('أكثر نوع صيانة تكراراً', '$mostCommon ($mostCommonCount مرة)'),
+                _statRow('أكثر نوع صيانة تكراراً',
+                    '$mostCommon ($mostCommonCount مرة)'),
               ],
               const Divider(height: 20),
               _statRow('عدد سجلات الصيانة', '${_records.length}'),
@@ -683,7 +717,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        Text(value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -776,7 +811,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(width: 8),
         SizedBox(
           width: 24,
-          child: Text('$count', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          child: Text('$count',
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -821,7 +858,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     if (costs[i] > 0)
                       Text(costs[i].toStringAsFixed(0),
-                          style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                          style:
+                              const TextStyle(fontSize: 9, color: Colors.grey)),
                     const SizedBox(height: 4),
                     Container(
                       height: 70 * heightRatio + 4,
@@ -832,7 +870,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text('${months[i].month}/${months[i].year % 100}',
-                        style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                        style:
+                            const TextStyle(fontSize: 9, color: Colors.grey)),
                   ],
                 ),
               ),

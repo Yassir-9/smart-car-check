@@ -4,15 +4,73 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:barcode/barcode.dart';
 import 'package:printing/printing.dart';
 import '../models/car_model.dart';
+import '../l10n/app_localizations.dart';
 
 class PdfService {
+  static Future<void> shareRepairReportPdf({
+    required CarModel car,
+    required Map<String, dynamic> repair,
+    Map<String, dynamic>? diagnosis,
+    Map<String, dynamic>? review,
+    Map<String, dynamic>? verification,
+    required AppLocalizations l10n,
+  }) async {
+    final font = pw.Font.ttf(
+        await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf'));
+    final lines = <String>[
+      '${l10n.pdfVehicle}: ${car.label}',
+      '${l10n.pdfDate}: ${repair['date'] ?? l10n.pdfNotSpecified}  •  ${l10n.pdfOdometer}: ${repair['mileage'] ?? l10n.pdfNotSpecified}',
+      if (diagnosis != null)
+        '${l10n.pdfDiagnosis}: ${diagnosis['title'] ?? diagnosis['possible_issue'] ?? l10n.pdfNotSpecified}',
+      if (review != null)
+        '${l10n.pdfQuoteReview}: ${review['summary'] ?? l10n.pdfAvailable}',
+      '${l10n.pdfRepair}: ${repair['partsReplaced'] ?? repair['changedParts'] ?? l10n.pdfNotSpecified}',
+      '${l10n.pdfCost}: ${repair['cost'] ?? repair['repairCost'] ?? l10n.pdfNotSpecified}',
+      if (verification != null)
+        '${l10n.pdfVerification}: ${verification['summary'] ?? l10n.pdfAvailable}',
+    ];
+    final doc = pw.Document();
+    doc.addPage(
+      pw.Page(
+        theme: pw.ThemeData.withFont(base: font),
+        build: (_) => pw.Directionality(
+          textDirection: l10n.localeName.startsWith('ar')
+              ? pw.TextDirection.rtl
+              : pw.TextDirection.ltr,
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(l10n.repairPdfTitle,
+                  style: pw.TextStyle(font: font, fontSize: 22)),
+              pw.SizedBox(height: 18),
+              ...lines.map((line) => pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 9),
+                    child: pw.Text(line,
+                        style: pw.TextStyle(font: font, fontSize: 12)),
+                  )),
+              pw.SizedBox(height: 16),
+              pw.Text(l10n.pdfDocumentationDisclaimer,
+                  style: pw.TextStyle(
+                      font: font, fontSize: 10, color: PdfColors.grey700)),
+            ],
+          ),
+        ),
+      ),
+    );
+    await Printing.sharePdf(
+        bytes: await doc.save(), filename: 'smart_car_check_repair.pdf');
+  }
+
   static Future<void> shareDiagnosisPdf({
     required Map<String, dynamic> result,
     required CarModel? car,
     required String description,
+    required AppLocalizations l10n,
   }) async {
-    final fontData = await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
-    final boldFontData = await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
+    final fontData =
+        await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
+    final boldFontData =
+        await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
     final ttf = pw.Font.ttf(fontData);
     final boldTtf = pw.Font.ttf(boldFontData);
 
@@ -24,7 +82,7 @@ class PdfService {
       logoImage = null;
     }
 
-    final severity = result['severity'] ?? 'غير محددة';
+    final severity = result['severity'] ?? l10n.pdfNotSpecified;
     final issue = result['possible_issue'] ?? '';
     final explanation = result['explanation'] ?? '';
     final confidenceScore = result['confidence_score'];
@@ -34,20 +92,22 @@ class PdfService {
         ? List<String>.from(result['recommendations'])
         : <String>[];
     final cost = result['estimated_cost'];
-    final diagnosisId = result['diagnosis_id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final diagnosisId = result['diagnosis_id']?.toString() ??
+        DateTime.now().millisecondsSinceEpoch.toString();
 
     List<Map<String, dynamic>> parts = [];
     if (result['matched_parts'] != null) {
       parts.addAll(List<Map<String, dynamic>>.from(result['matched_parts']));
     }
-    if (parts.isEmpty && result['external_search'] != null &&
+    if (parts.isEmpty &&
+        result['external_search'] != null &&
         result['external_search']['found'] == true) {
       final suggestions = result['external_search']['suggestions'];
       if (suggestions != null) {
         parts.addAll(List<Map<String, dynamic>>.from(suggestions).map((s) => {
               'partName': s['name'],
               'price': s['estimated_price'],
-              'sellerPhone': s['store_name'],
+              'sourceLabel': s['store_name'],
             }));
       }
     }
@@ -55,40 +115,45 @@ class PdfService {
     PdfColor severityColor;
     switch (severity) {
       case 'عالية':
-        severityColor = PdfColor.fromInt(0xFFD32F2F);
+        severityColor = const PdfColor.fromInt(0xFFD32F2F);
         break;
       case 'متوسطة':
-        severityColor = PdfColor.fromInt(0xFFF57C00);
+        severityColor = const PdfColor.fromInt(0xFFF57C00);
         break;
       case 'منخفضة':
-        severityColor = PdfColor.fromInt(0xFF388E3C);
+        severityColor = const PdfColor.fromInt(0xFF388E3C);
         break;
       default:
         severityColor = PdfColors.grey;
     }
 
     final now = DateTime.now();
-    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final qrData =
-        'Smart Car Check\nرقم التقرير: $diagnosisId\nالتاريخ: $dateStr\nالمشكلة: $issue\nالخطورة: $severity\nالسيارة: ${car?.label ?? 'غير محددة'}';
+        'Smart Car Check\n${l10n.pdfReportNumber}: $diagnosisId\n${l10n.pdfDate}: $dateStr\n${l10n.pdfDiagnosis}: $issue\n${l10n.pdfSeverity}: $severity\n${l10n.pdfVehicle}: ${car?.label ?? l10n.pdfNotSpecified}';
 
     final doc = pw.Document();
 
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        textDirection: pw.TextDirection.rtl,
+        textDirection: l10n.localeName.startsWith('ar')
+            ? pw.TextDirection.rtl
+            : pw.TextDirection.ltr,
         theme: pw.ThemeData.withFont(base: ttf, bold: boldTtf),
         build: (context) {
           return pw.Directionality(
-            textDirection: pw.TextDirection.rtl,
+            textDirection: l10n.localeName.startsWith('ar')
+                ? pw.TextDirection.rtl
+                : pw.TextDirection.ltr,
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Container(
                   padding: const pw.EdgeInsets.all(16),
                   decoration: pw.BoxDecoration(
-                    color: PdfColor.fromInt(0xFF1E3A5F),
+                    color: const PdfColor.fromInt(0xFF1E3A5F),
                     borderRadius: pw.BorderRadius.circular(8),
                   ),
                   width: double.infinity,
@@ -102,28 +167,34 @@ class PdfService {
                           height: 32,
                           decoration: pw.BoxDecoration(
                             shape: pw.BoxShape.circle,
-                            image: pw.DecorationImage(image: logoImage, fit: pw.BoxFit.cover),
+                            image: pw.DecorationImage(
+                                image: logoImage, fit: pw.BoxFit.cover),
                           ),
                         ),
                         pw.SizedBox(width: 10),
                       ],
                       pw.Text(
-                        'تقرير تشخيص السيارة الذكي',
-                        style: pw.TextStyle(color: PdfColors.white, fontSize: 20, font: boldTtf),
+                        l10n.diagnosisPdfTitle,
+                        style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontSize: 20,
+                            font: boldTtf),
                         textAlign: pw.TextAlign.center,
                       ),
                     ],
                   ),
                 ),
                 pw.SizedBox(height: 4),
-                pw.Text('رقم التقرير: $diagnosisId  |  التاريخ: $dateStr',
-                    style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                pw.Text(
+                    '${l10n.pdfReportNumber}: $diagnosisId  |  ${l10n.pdfDate}: $dateStr',
+                    style: const pw.TextStyle(
+                        fontSize: 9, color: PdfColors.grey700)),
                 pw.SizedBox(height: 12),
                 if (car != null)
-                  pw.Text('السيارة: ${car.label}',
+                  pw.Text('${l10n.pdfVehicle}: ${car.label}',
                       style: pw.TextStyle(fontSize: 13, font: boldTtf)),
                 pw.SizedBox(height: 6),
-                pw.Text('وصف المشكلة: $description',
+                pw.Text('${l10n.pdfProblemDescription}: $description',
                     style: const pw.TextStyle(fontSize: 12)),
                 pw.SizedBox(height: 16),
                 pw.Divider(),
@@ -134,24 +205,33 @@ class PdfService {
                 pw.Row(
                   children: [
                     pw.Container(
-                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: pw.BoxDecoration(
                         color: severityColor,
                         borderRadius: pw.BorderRadius.circular(20),
                       ),
-                      child: pw.Text('الخطورة: $severity',
-                          style: pw.TextStyle(color: PdfColors.white, fontSize: 11, font: boldTtf)),
+                      child: pw.Text('${l10n.pdfSeverity}: $severity',
+                          style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontSize: 11,
+                              font: boldTtf)),
                     ),
                     if (confidenceScore != null) ...[
                       pw.SizedBox(width: 8),
                       pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: pw.BoxDecoration(
                           color: PdfColors.blueGrey100,
                           borderRadius: pw.BorderRadius.circular(20),
                         ),
-                        child: pw.Text('نسبة الثقة: $confidenceScore%',
-                            style: pw.TextStyle(color: PdfColors.blueGrey900, fontSize: 11, font: boldTtf)),
+                        child: pw.Text(
+                            '${l10n.pdfConfidence}: $confidenceScore%',
+                            style: pw.TextStyle(
+                                color: PdfColors.blueGrey900,
+                                fontSize: 11,
+                                font: boldTtf)),
                       ),
                     ],
                   ],
@@ -159,7 +239,8 @@ class PdfService {
                 if (confidenceReason != null) ...[
                   pw.SizedBox(height: 4),
                   pw.Text(confidenceReason,
-                      style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                      style: const pw.TextStyle(
+                          fontSize: 10, color: PdfColors.grey700)),
                 ],
                 if (canDrive != null) ...[
                   pw.SizedBox(height: 10),
@@ -172,18 +253,19 @@ class PdfService {
                       border: pw.Border.all(color: severityColor),
                     ),
                     child: pw.Text(canDrive,
-                        style: pw.TextStyle(fontSize: 11, font: boldTtf, color: severityColor)),
+                        style: pw.TextStyle(
+                            fontSize: 11, font: boldTtf, color: severityColor)),
                   ),
                 ],
                 pw.SizedBox(height: 14),
-                pw.Text('التفسير:',
+                pw.Text('${l10n.pdfExplanation}:',
                     style: pw.TextStyle(fontSize: 13, font: boldTtf)),
                 pw.SizedBox(height: 6),
                 pw.Text(explanation,
                     style: const pw.TextStyle(fontSize: 12, lineSpacing: 3)),
                 if (recommendations.isNotEmpty) ...[
                   pw.SizedBox(height: 14),
-                  pw.Text('التوصيات:',
+                  pw.Text('${l10n.pdfRecommendations}:',
                       style: pw.TextStyle(fontSize: 13, font: boldTtf)),
                   pw.SizedBox(height: 6),
                   ...recommendations.map(
@@ -196,41 +278,52 @@ class PdfService {
                 ],
                 if (parts.isNotEmpty) ...[
                   pw.SizedBox(height: 14),
-                  pw.Text('القطع المطلوبة:',
+                  pw.Text('${l10n.pdfRequiredParts}:',
                       style: pw.TextStyle(fontSize: 13, font: boldTtf)),
                   pw.SizedBox(height: 6),
                   pw.Table(
-                    border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                    border: pw.TableBorder.all(
+                        color: PdfColors.grey300, width: 0.5),
                     children: [
                       pw.TableRow(
-                        decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                        decoration:
+                            const pw.BoxDecoration(color: PdfColors.grey200),
                         children: [
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('القطعة', style: pw.TextStyle(fontSize: 10, font: boldTtf)),
+                            child: pw.Text(l10n.pdfPart,
+                                style:
+                                    pw.TextStyle(fontSize: 10, font: boldTtf)),
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('السعر', style: pw.TextStyle(fontSize: 10, font: boldTtf)),
+                            child: pw.Text(l10n.pdfPrice,
+                                style:
+                                    pw.TextStyle(fontSize: 10, font: boldTtf)),
                           ),
                           pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('المصدر', style: pw.TextStyle(fontSize: 10, font: boldTtf)),
+                            child: pw.Text(l10n.pdfSource,
+                                style:
+                                    pw.TextStyle(fontSize: 10, font: boldTtf)),
                           ),
                         ],
                       ),
                       ...parts.take(6).map((p) => pw.TableRow(children: [
                             pw.Padding(
                               padding: const pw.EdgeInsets.all(6),
-                              child: pw.Text('${p['partName'] ?? ''}', style: const pw.TextStyle(fontSize: 10)),
+                              child: pw.Text('${p['partName'] ?? ''}',
+                                  style: const pw.TextStyle(fontSize: 10)),
                             ),
                             pw.Padding(
                               padding: const pw.EdgeInsets.all(6),
-                              child: pw.Text('${p['price'] ?? '-'}', style: const pw.TextStyle(fontSize: 10)),
+                              child: pw.Text('${p['price'] ?? '-'}',
+                                  style: const pw.TextStyle(fontSize: 10)),
                             ),
                             pw.Padding(
                               padding: const pw.EdgeInsets.all(6),
-                              child: pw.Text('${p['sellerPhone'] ?? '-'}', style: const pw.TextStyle(fontSize: 10)),
+                              child: pw.Text('${p['sourceLabel'] ?? p['carBrand'] ?? '-'}',
+                                  style: const pw.TextStyle(fontSize: 10)),
                             ),
                           ])),
                     ],
@@ -239,7 +332,7 @@ class PdfService {
                 if (cost != null && cost != 'null') ...[
                   pw.SizedBox(height: 14),
                   pw.Divider(),
-                  pw.Text('التكلفة التقديرية: $cost',
+                  pw.Text('${l10n.pdfEstimatedCost}: $cost',
                       style: const pw.TextStyle(fontSize: 12)),
                 ],
                 pw.SizedBox(height: 20),
@@ -251,7 +344,7 @@ class PdfService {
                     border: pw.Border.all(color: PdfColors.orange200),
                   ),
                   child: pw.Text(
-                    'هذا تشخيص أولي توجيهي بالذكاء الاصطناعي، وليس بديلاً عن فحص فني معتمد.',
+                    l10n.pdfAiDisclaimer,
                     style: const pw.TextStyle(fontSize: 10),
                   ),
                 ),
@@ -266,11 +359,12 @@ class PdfService {
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('امسح الرمز للتحقق من محتوى التقرير',
+                          pw.Text(l10n.pdfQrInstruction,
                               style: pw.TextStyle(fontSize: 10, font: boldTtf)),
                           pw.SizedBox(height: 3),
-                          pw.Text('رقم التقرير: $diagnosisId',
-                              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                          pw.Text('${l10n.pdfReportNumber}: $diagnosisId',
+                              style: const pw.TextStyle(
+                                  fontSize: 9, color: PdfColors.grey700)),
                         ],
                       ),
                     ),
@@ -291,7 +385,7 @@ class PdfService {
 
     await Printing.sharePdf(
       bytes: await doc.save(),
-      filename: 'تشخيص_السيارة.pdf',
+      filename: 'smart_car_check_diagnosis.pdf',
     );
   }
 }

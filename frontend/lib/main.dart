@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
-import 'screens/home_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/app_shell.dart';
+import 'screens/onboarding_screen.dart';
+import 'theme/app_design_system.dart';
 import 'theme_notifier.dart';
 import 'locale_notifier.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -19,7 +22,9 @@ void main() async {
 }
 
 class CarAiApp extends StatefulWidget {
-  const CarAiApp({super.key});
+  final Stream<User?>? authStateChanges;
+
+  const CarAiApp({super.key, this.authStateChanges});
 
   @override
   State<CarAiApp> createState() => _CarAiAppState();
@@ -44,98 +49,21 @@ class _CarAiAppState extends State<CarAiApp> {
     setState(() {});
   }
 
-  ThemeData _lightTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF1E3A5F),
-        brightness: Brightness.light,
-      ),
-      scaffoldBackgroundColor: const Color(0xFFF5F7FA),
-      cardColor: Colors.white,
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E3A5F),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1E3A5F),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle:
-              const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
-  ThemeData _darkTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF3B6EA5),
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xFF121417),
-      cardColor: const Color(0xFF1E2126),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF15181C),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF3B6EA5),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle:
-              const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFF1E2126),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'تشخيص السيارة الذكي',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       debugShowCheckedModeBanner: false,
       locale: Locale(localeNotifier.value),
-      supportedLocales: const [Locale('ar'), Locale('en')],
+      supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: _lightTheme(),
-      darkTheme: _darkTheme(),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       themeMode: themeNotifier.value ? ThemeMode.dark : ThemeMode.light,
       builder: (context, child) {
         return Directionality(
@@ -146,7 +74,8 @@ class _CarAiAppState extends State<CarAiApp> {
         );
       },
       home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
+        stream:
+            widget.authStateChanges ?? FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
@@ -154,7 +83,7 @@ class _CarAiAppState extends State<CarAiApp> {
             );
           }
           if (snapshot.hasData) {
-            return const HomeScreen();
+            return const OnboardingGate(child: AppShell());
           }
           return const AuthScreen();
         },

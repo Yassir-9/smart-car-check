@@ -1,17 +1,24 @@
 import '../models/car_model.dart';
 import '../models/maintenance_record.dart';
 import '../models/maintenance_reminder.dart';
+import '../models/vehicle_issue.dart';
 
 class HealthScoreService {
   static int calculate({
     required CarModel car,
     required List<MaintenanceRecord> records,
     required List<MaintenanceReminder> overdueReminders,
+    List<VehicleIssue> issues = const [],
+    int unresolvedObdCodes = 0,
   }) {
     int score = 100;
     final now = DateTime.now();
 
-    final docs = [car.insuranceExpiry, car.registrationExpiry, car.inspectionExpiry];
+    final docs = [
+      car.insuranceExpiry,
+      car.registrationExpiry,
+      car.inspectionExpiry
+    ];
     for (final doc in docs) {
       if (doc == null) continue;
       if (doc.isBefore(now)) {
@@ -24,9 +31,8 @@ class HealthScoreService {
     if (records.isEmpty) {
       score -= 25;
     } else {
-      final lastService = records
-          .map((r) => r.date)
-          .reduce((a, b) => a.isAfter(b) ? a : b);
+      final lastService =
+          records.map((r) => r.date).reduce((a, b) => a.isAfter(b) ? a : b);
       final monthsSince = now.difference(lastService).inDays / 30;
       if (monthsSince > 12) {
         score -= 20;
@@ -37,6 +43,17 @@ class HealthScoreService {
 
     final overdueCount = overdueReminders.length;
     score -= (overdueCount * 8).clamp(0, 24);
+
+    for (final issue in issues) {
+      if (issue.status == 'returned') {
+        score -= 20;
+      } else if (issue.status == 'repair_needed') {
+        score -= issue.returnedAfterRepair ? 20 : 15;
+      } else if (issue.status == 'new') {
+        score -= 8;
+      }
+    }
+    score -= (unresolvedObdCodes * 5).clamp(0, 20);
 
     return score.clamp(0, 100);
   }

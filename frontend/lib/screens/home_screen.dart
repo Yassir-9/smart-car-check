@@ -21,6 +21,10 @@ import 'obd_connect_screen.dart';
 import 'dashboard_screen.dart';
 import 'subscription_screen.dart';
 import '../services/pdf_service.dart';
+import '../l10n/app_localizations.dart';
+import '../services/obd_session_service.dart';
+import '../config/api_config.dart';
+import '../utils/image_mime_type.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -47,9 +51,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Uint8List? _selectedImage;
   String _selectedImageMimeType = 'image/jpeg';
 
-  static const String backendUrl =
-      'https://car-ai-backend-7gpb.onrender.com/api/diagnose';
-
   @override
   void initState() {
     super.initState();
@@ -57,7 +58,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadActiveCar();
     if (DiagnosisSessionService.hasSavedResult) {
       _result = DiagnosisSessionService.lastResult;
-      _descriptionController.text = DiagnosisSessionService.lastDescription ?? '';
+      _descriptionController.text =
+          DiagnosisSessionService.lastDescription ?? '';
     }
   }
 
@@ -104,7 +106,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _toggleListening() async {
     if (!_speechAvailable) {
       setState(() {
-        _errorText = 'الميكروفون غير متاح. تأكد من إعطاء صلاحية الوصول للمتصفح.';
+        _errorText =
+            'الميكروفون غير متاح. تأكد من إعطاء صلاحية الوصول للمتصفح.';
       });
       return;
     }
@@ -186,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final token = await FirebaseAuth.instance.currentUser?.getIdToken();
       final response = await http.post(
-        Uri.parse('https://car-ai-backend-7gpb.onrender.com/api/parts/external-search'),
+        ApiConfig.apiUri('/parts/external-search'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -205,7 +208,8 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _result!['external_search'] = data;
         });
-        DiagnosisSessionService.save(_result!, _descriptionController.text.trim());
+        DiagnosisSessionService.save(
+            _result!, _descriptionController.text.trim());
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تعذر البحث الآن، حاول مرة أخرى')),
@@ -222,15 +226,71 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _contactMatchedPart(Map<String, dynamic> part) async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final partId = part['id']?.toString();
+    final user = FirebaseAuth.instance.currentUser;
+    if (partId == null || partId.isEmpty || user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.contactSignInRequired)),
+        );
+      }
+      return;
+    }
+    try {
+      final token = await user.getIdToken();
+      final response = await http.get(
+        ApiConfig.apiUri('/parts/$partId/contact'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'X-App-Locale': locale,
+        },
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final data =
+            jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        final phone = data['sellerPhone'] as String?;
+        if (phone != null && phone.isNotEmpty) {
+          await launchUrl(
+            Uri.parse('tel:$phone'),
+            mode: LaunchMode.externalApplication,
+          );
+          return;
+        }
+      }
+      final message = response.statusCode == 401
+          ? l10n.contactSignInRequired
+          : response.statusCode == 429
+              ? l10n.sellerContactRateLimited
+              : response.statusCode == 404
+                  ? l10n.sellerContactUnavailable
+                  : l10n.sellerContactFailed;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.sellerContactFailed)),
+      );
+    }
+  }
+
   Future<void> _submitFeedback(bool accurate) async {
     final id = _result?['diagnosis_id'];
     if (id == null) return;
     setState(() => _feedbackSubmitted = true);
     try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
       await http.patch(
-        Uri.parse(
-            'https://car-ai-backend-7gpb.onrender.com/api/history/$id/feedback'),
-        headers: {'Content-Type': 'application/json'},
+        ApiConfig.apiUri('/history/$id/feedback'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({'accurate': accurate}),
       );
     } catch (e) {
@@ -244,12 +304,14 @@ class _HomeScreenState extends State<HomeScreen> {
       result: _result!,
       car: _activeCar,
       description: _descriptionController.text.trim(),
+      l10n: AppLocalizations.of(context),
     );
   }
 
   void _shareResult() {
     if (_result == null) return;
-    final severity = _result!['severity'] ?? 'غير محددة';
+    final l10n = AppLocalizations.of(context);
+    final severity = _result!['severity'] ?? l10n.pdfNotSpecified;
     final issue = _result!['possible_issue'] ?? '';
     final explanation = _result!['explanation'] ?? '';
     final recommendations = _result!['recommendations'] != null
@@ -258,27 +320,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final cost = _result!['estimated_cost'];
 
     final buffer = StringBuffer();
-    buffer.writeln('🚗 تشخيص السيارة الذكي');
-    buffer.writeln('السيارة: ${_activeCar?.label ?? ""}');
+    buffer.writeln('🚗 ${l10n.diagnosisPdfTitle}');
+    buffer.writeln('${l10n.pdfVehicle}: ${_activeCar?.label ?? ""}');
     buffer.writeln();
-    buffer.writeln('⚠️ المشكلة المحتملة: $issue');
-    buffer.writeln('درجة الخطورة: $severity');
+    buffer.writeln('⚠️ ${l10n.pdfDiagnosis}: $issue');
+    buffer.writeln('${l10n.pdfSeverity}: $severity');
     buffer.writeln();
-    buffer.writeln('التفسير:');
+    buffer.writeln('${l10n.pdfExplanation}:');
     buffer.writeln(explanation);
     if (recommendations.isNotEmpty) {
       buffer.writeln();
-      buffer.writeln('التوصيات:');
+      buffer.writeln('${l10n.pdfRecommendations}:');
       for (final r in recommendations) {
         buffer.writeln('• $r');
       }
     }
     if (cost != null && cost != 'null') {
       buffer.writeln();
-      buffer.writeln('التكلفة التقديرية: $cost');
+      buffer.writeln('${l10n.pdfEstimatedCost}: $cost');
     }
     buffer.writeln();
-    buffer.writeln('تشخيص أولي توجيهي بالذكاء الاصطناعي، وليس بديلاً عن فحص فني معتمد.');
+    buffer.writeln(l10n.pdfAiDisclaimer);
 
     SharePlus.instance.share(ShareParams(text: buffer.toString()));
   }
@@ -322,7 +384,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final bytes = await picked.readAsBytes();
         setState(() {
           _selectedImage = bytes;
-          _selectedImageMimeType = picked.mimeType ?? 'image/jpeg';
+          _selectedImageMimeType = resolveImageMimeType(
+            path: picked.path,
+            reportedMimeType: picked.mimeType,
+          );
         });
       }
     } catch (e) {
@@ -335,8 +400,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _submitDiagnosis() async {
-    if ((_descriptionController.text.trim().isEmpty && _selectedImage == null) ||
-        _activeCar == null) return;
+    if ((_descriptionController.text.trim().isEmpty &&
+            _selectedImage == null) ||
+        _activeCar == null) {
+      return;
+    }
     FocusScope.of(context).unfocus();
 
     setState(() {
@@ -354,7 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
 
       final response = await http.post(
-        Uri.parse(backendUrl),
+        ApiConfig.apiUri('/diagnose'),
         headers: {
           'Content-Type': 'application/json',
           if (idToken != null) 'Authorization': 'Bearer $idToken',
@@ -366,6 +434,8 @@ class _HomeScreenState extends State<HomeScreen> {
             'model': _activeCar!.model,
             'year': _activeCar!.year,
           },
+          if (ObdSessionService.lastCodes.isNotEmpty)
+            'obd_codes': List<String>.from(ObdSessionService.lastCodes),
           if (imageBase64 != null)
             'image': {
               'data': imageBase64,
@@ -385,8 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _errorText =
             'استنفدت عدد التشخيصات المجانية لهذا الشهر (5 تشخيصات). اشترك للاستمرار بدون حدود.');
       } else if (response.statusCode == 401) {
-        setState(() =>
-            _errorText = 'يرجى تسجيل الدخول مرة أخرى للمتابعة');
+        setState(() => _errorText = 'يرجى تسجيل الدخول مرة أخرى للمتابعة');
       } else {
         setState(() => _errorText = 'خطأ من السيرفر: ${response.statusCode}');
       }
@@ -431,94 +500,90 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Wrap(
                 alignment: WrapAlignment.spaceEvenly,
                 children: [
+                  _buildNavItem(
+                    icon: Icons.dashboard_outlined,
+                    label: 'لوحة التحكم',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const DashboardScreen()),
+                      );
+                    },
+                  ),
+                  if (_activeCar != null)
                     _buildNavItem(
-                      icon: Icons.dashboard_outlined,
-                      label: 'لوحة التحكم',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const DashboardScreen()),
-                        );
-                      },
-                    ),
-                    if (_activeCar != null)
-                      _buildNavItem(
-                        icon: Icons.receipt_long_outlined,
-                        label: 'سجل السيارة',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    MaintenanceHistoryScreen(
-                                        car: _activeCar!)),
-                          );
-                        },
-                      ),
-                    _buildNavItem(
-                      icon: Icons.build_circle_outlined,
-                      label: 'الصيانة',
+                      icon: Icons.receipt_long_outlined,
+                      label: 'سجل السيارة',
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (context) =>
-                                  const MaintenanceScreen()),
+                                  MaintenanceHistoryScreen(car: _activeCar!)),
                         );
                       },
                     ),
-                    _buildNavItem(
-                      icon: Icons.storefront_outlined,
-                      label: 'قطع الغيار',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const PartsScreen()),
-                        );
-                      },
-                    ),
-                    _buildNavItem(
-                      icon: Icons.bluetooth,
-                      label: 'OBD',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const ObdConnectScreen()),
-                        );
-                      },
-                    ),
-                    _buildNavItem(
-                      icon: Icons.history,
-                      label: 'السجل',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const HistoryScreen()),
-                        );
-                      },
-                    ),
-                    _buildNavItem(
-                      icon: Icons.workspace_premium_outlined,
-                      label: 'الاشتراك',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const SubscriptionScreen()),
-                        );
-                      },
-                    ),
-                    _buildNavItem(
-                      icon: Icons.settings_outlined,
-                      label: 'الإعدادات',
-                      onTap: _openSettingsScreen,
-                    ),
+                  _buildNavItem(
+                    icon: Icons.build_circle_outlined,
+                    label: 'الصيانة',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const MaintenanceScreen()),
+                      );
+                    },
+                  ),
+                  _buildNavItem(
+                    icon: Icons.storefront_outlined,
+                    label: 'قطع الغيار',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const PartsScreen()),
+                      );
+                    },
+                  ),
+                  _buildNavItem(
+                    icon: Icons.bluetooth,
+                    label: 'OBD',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ObdConnectScreen()),
+                      );
+                    },
+                  ),
+                  _buildNavItem(
+                    icon: Icons.history,
+                    label: 'السجل',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const HistoryScreen()),
+                      );
+                    },
+                  ),
+                  _buildNavItem(
+                    icon: Icons.workspace_premium_outlined,
+                    label: 'الاشتراك',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const SubscriptionScreen()),
+                      );
+                    },
+                  ),
+                  _buildNavItem(
+                    icon: Icons.settings_outlined,
+                    label: 'الإعدادات',
+                    onTap: _openSettingsScreen,
+                  ),
                 ],
               ),
             ),
@@ -612,7 +677,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E3A5F).withValues(alpha: 0.1),
+                            color:
+                                const Color(0xFF1E3A5F).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.directions_car_filled,
@@ -629,8 +695,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(
                                 _activeCar?.label ?? 'اضغط لاختيار سيارة',
                                 style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold),
+                                    fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -642,7 +707,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 const Text('اوصف المشكلة',
                     style:
                         TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
@@ -721,7 +785,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: const Text('أضف صورة للمبة التحذير (اختياري)'),
                   ),
                 const SizedBox(height: 16),
-
                 SizedBox(
                   height: 52,
                   child: ElevatedButton.icon(
@@ -739,7 +802,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
                 Row(
                   children: [
                     Icon(Icons.info_outline,
@@ -748,14 +810,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: Text(
                         'تشخيص أولي توجيهي بالذكاء الاصطناعي، وليس بديلاً عن فحص فني معتمد',
-                        style:
-                            TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade600),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-
                 if (_errorText != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -771,7 +832,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-
                 if (_result != null)
                   _buildResultCard()
                 else if (!_isLoading && _errorText == null)
@@ -781,9 +841,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   Center(
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final uri = Uri.parse("https://car-ai-backend-7gpb.onrender.com/download/app-release.apk");
+                        final uri =
+                            ApiConfig.rootUri('/download/app-release.apk');
                         if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
                         }
                       },
                       icon: const Icon(Icons.android),
@@ -844,7 +906,8 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.search_rounded,
-                size: 40, color: const Color(0xFF1E3A5F).withValues(alpha: 0.5)),
+                size: 40,
+                color: const Color(0xFF1E3A5F).withValues(alpha: 0.5)),
           ),
           const SizedBox(height: 16),
           Text(
@@ -880,9 +943,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 answer = null;
               });
               try {
-                final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+                final idToken =
+                    await FirebaseAuth.instance.currentUser?.getIdToken();
                 final response = await http.post(
-                  Uri.parse('https://car-ai-backend-7gpb.onrender.com/api/ask-expert'),
+                  ApiConfig.apiUri('/ask-expert'),
                   headers: {
                     'Content-Type': 'application/json',
                     if (idToken != null) 'Authorization': 'Bearer $idToken',
@@ -928,12 +992,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
-                      const Icon(Icons.support_agent, color: Color(0xFF1E3A5F)),
-                      const SizedBox(width: 8),
-                      const Text('اسأل خبير السيارات الذكي',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Icon(Icons.support_agent, color: Color(0xFF1E3A5F)),
+                      SizedBox(width: 8),
+                      Text('اسأل خبير السيارات الذكي',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -942,7 +1007,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     maxLines: 2,
                     decoration: InputDecoration(
                       hintText: 'مثال: هل أستطيع السفر بالسيارة الآن؟',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -956,7 +1022,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       child: isAsking
                           ? const SizedBox(
-                              height: 18, width: 18,
+                              height: 18,
+                              width: 18,
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white),
                             )
@@ -965,7 +1032,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   if (errorText != null) ...[
                     const SizedBox(height: 10),
-                    Text(errorText!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                    Text(errorText!,
+                        style:
+                            const TextStyle(color: Colors.red, fontSize: 13)),
                   ],
                   if (answer != null) ...[
                     const SizedBox(height: 14),
@@ -976,7 +1045,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: const Color(0xFFF0F4F8),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(answer!, style: const TextStyle(fontSize: 14, height: 1.6)),
+                      child: Text(answer!,
+                          style: const TextStyle(fontSize: 14, height: 1.6)),
                     ),
                   ],
                 ],
@@ -1022,12 +1092,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.share_outlined, color: Color(0xFF1E3A5F)),
+                icon:
+                    const Icon(Icons.share_outlined, color: Color(0xFF1E3A5F)),
                 tooltip: 'مشاركة التشخيص',
                 onPressed: _shareResult,
               ),
               IconButton(
-                icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFF1E3A5F)),
+                icon: const Icon(Icons.picture_as_pdf_outlined,
+                    color: Color(0xFF1E3A5F)),
                 tooltip: 'تصدير PDF',
                 onPressed: _exportPdf,
               ),
@@ -1040,15 +1112,23 @@ class _HomeScreenState extends State<HomeScreen> {
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text('${_severityEmoji(severity)} الخطورة: ${severity ?? "غير محددة"}',
+            child: Text('${_severityEmoji(severity)} الخطورة: $severity',
                 style: TextStyle(
                     color: color, fontSize: 12, fontWeight: FontWeight.bold)),
           ),
+          if (_result!['obd_analysis'] is List &&
+              (_result!['obd_analysis'] as List).isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _buildObdAnalysis(
+              List<Map<String, dynamic>>.from(_result!['obd_analysis']),
+            ),
+          ],
           if (_result!['confidence_score'] != null) ...[
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.psychology_outlined, size: 16, color: Colors.grey[700]),
+                Icon(Icons.psychology_outlined,
+                    size: 16, color: Colors.grey[700]),
                 const SizedBox(width: 6),
                 Text('نسبة الثقة بالتشخيص: ${_result!['confidence_score']}%',
                     style: TextStyle(
@@ -1078,7 +1158,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.directions_car_filled_outlined, size: 18, color: color),
+                  Icon(Icons.directions_car_filled_outlined,
+                      size: 18, color: color),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(_result!['can_drive'],
@@ -1095,8 +1176,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _result!['estimated_cost'] != 'null') ...[
             const SizedBox(height: 14),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F5E9),
                 borderRadius: BorderRadius.circular(12),
@@ -1158,7 +1238,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
-
           if (_result!['matched_parts'] != null &&
               (_result!['matched_parts'] as List).isNotEmpty) ...[
             const SizedBox(height: 14),
@@ -1191,11 +1270,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     IconButton(
-                      onPressed: () async {
-                        final uri = Uri.parse('tel:${p['sellerPhone']}');
-                        await launchUrl(uri,
-                            mode: LaunchMode.externalApplication);
-                      },
+                      onPressed: () => _contactMatchedPart(p),
                       icon: const Icon(Icons.call_outlined,
                           color: Color(0xFF1E3A5F)),
                     ),
@@ -1234,8 +1309,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     _result!['external_search']['suggestions'] ?? [])
                 .map(
               (s) {
-                final hasUrl =
-                    s['url'] != null && s['url'].toString().isNotEmpty && s['url'] != 'null';
+                final hasUrl = s['url'] != null &&
+                    s['url'].toString().isNotEmpty &&
+                    s['url'] != 'null';
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
@@ -1387,6 +1463,60 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildObdAnalysis(List<Map<String, dynamic>> items) {
+    Widget detail(String label, dynamic value) {
+      if (value == null || value.toString().trim().isEmpty) {
+        return const SizedBox.shrink();
+      }
+      final text = value is List ? value.join('، ') : value.toString();
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text('$label: $text',
+            style: const TextStyle(fontSize: 12.5, height: 1.5)),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('تحليل أكواد OBD',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        ...items.map((item) {
+          final urgent = item['urgent'] == true;
+          return Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: urgent ? const Color(0xFFFFEBEE) : const Color(0xFFF5F7FA),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color:
+                    urgent ? const Color(0xFFEF9A9A) : const Color(0xFFD7DEE8),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${item['code'] ?? ''} — ${item['fault_name'] ?? ''}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                detail('درجة الخطورة', item['severity']),
+                detail('معنى الكود', item['meaning']),
+                detail('الأسباب المحتملة', item['possible_causes']),
+                detail('الفحوصات المقترحة', item['suggested_checks']),
+                detail('القطع المحتملة', item['possible_parts']),
+                detail('هل يمكن القيادة؟', item['can_drive']),
+                detail('تدخل عاجل', urgent ? 'نعم' : 'لا'),
+                detail('الخطوة التالية', item['next_step']),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

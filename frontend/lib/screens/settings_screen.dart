@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme_notifier.dart';
 import '../locale_notifier.dart';
-import '../app_translations.dart';
 import '../services/auth_service.dart';
 import 'cars_screen.dart';
+import '../l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,43 +38,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final isDark = themeNotifier.value;
     final cardColor = Theme.of(context).cardColor;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppTranslations.t('settings')),
+        title: Text(l10n.settings),
         centerTitle: true,
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildSectionTitle(AppTranslations.t('preferences')),
+            _buildSectionTitle(l10n.preferences),
             Container(
               decoration: _sectionDecoration(cardColor),
               child: Column(
                 children: [
                   _switchRow(
                     icon: isDark ? Icons.dark_mode : Icons.light_mode,
-                    title: AppTranslations.t('dark_mode'),
-                    subtitle: isDark ? 'الوضع الداكن مفعّل' : 'الوضع الفاتح مفعّل',
+                    title: l10n.darkMode,
+                    subtitle:
+                        isDark ? l10n.darkModeEnabled : l10n.lightModeEnabled,
                     value: isDark,
                     onChanged: (_) => themeNotifier.toggle(),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   _dropdownRow(
                     icon: Icons.language,
-                    title: 'اللغة / Language',
-                    subtitle: localeNotifier.value == 'ar' ? 'العربية' : 'English',
+                    title: l10n.language,
+                    subtitle: localeNotifier.value == 'ar'
+                        ? l10n.arabic
+                        : l10n.english,
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   _listRow(
                     icon: Icons.directions_car_filled,
-                    title: AppTranslations.t('manage_cars'),
-                    subtitle: 'إضافة أو تعديل بيانات سياراتك',
+                    title: l10n.manageCars,
+                    subtitle: l10n.manageCarsSubtitle,
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const CarsScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const CarsScreen()),
                       );
                     },
                   ),
@@ -82,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            _buildSectionTitle(AppTranslations.t('about_app')),
+            _buildSectionTitle(l10n.aboutApp),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: _sectionDecoration(cardColor),
@@ -112,22 +117,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(AppTranslations.t('app_title'),
-                              style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.bold)),
-                          Text(AppTranslations.t('version'),
-                              style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(l10n.appTitle,
+                                style: const TextStyle(
+                                    fontSize: 15, fontWeight: FontWeight.bold)),
+                            Text(l10n.version,
+                                style: const TextStyle(
+                                    fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    AppTranslations.t('app_description'),
-                    style: TextStyle(fontSize: 13, height: 1.6, color: Colors.grey.shade600),
+                    l10n.appDescription,
+                    style: TextStyle(
+                        fontSize: 13, height: 1.6, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -147,8 +156,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      AppTranslations.t('disclaimer_text'),
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF6B5B3D), height: 1.5),
+                      l10n.disclaimerText,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF6B5B3D), height: 1.5),
                     ),
                   ),
                 ],
@@ -161,7 +171,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.red,
                   side: const BorderSide(color: Colors.red),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: () async {
                   await AuthService.signOut();
@@ -170,7 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 },
                 icon: const Icon(Icons.logout),
-                label: Text(AppTranslations.t('logout')),
+                label: Text(l10n.logout),
               ),
             ),
           ],
@@ -215,9 +226,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(subtitle,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
               ],
             ),
           ),
@@ -232,6 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required String subtitle,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
@@ -242,18 +257,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(subtitle,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
               ],
             ),
           ),
           DropdownButton<String>(
             value: localeNotifier.value,
             underline: const SizedBox.shrink(),
-            items: const [
-              DropdownMenuItem(value: 'ar', child: Text('العربية')),
-              DropdownMenuItem(value: 'en', child: Text('English')),
+            items: [
+              DropdownMenuItem(value: 'ar', child: Text(l10n.arabic)),
+              DropdownMenuItem(value: 'en', child: Text(l10n.english)),
             ],
             onChanged: (val) {
               if (val != null) localeNotifier.setLanguage(val);
@@ -283,13 +301,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(subtitle,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_left, size: 20, color: Colors.grey),
+            Icon(
+              Directionality.of(context) == TextDirection.rtl
+                  ? Icons.chevron_left
+                  : Icons.chevron_right,
+              size: 20,
+              color: Colors.grey,
+            ),
           ],
         ),
       ),
@@ -298,10 +325,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, right: 4),
+      padding: const EdgeInsetsDirectional.only(bottom: 8, start: 4),
       child: Text(
         title,
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
+        style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade600),
       ),
     );
   }

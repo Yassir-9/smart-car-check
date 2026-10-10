@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/maintenance_record.dart';
 import '../models/car_model.dart';
 import '../services/maintenance_record_service.dart';
@@ -36,19 +37,20 @@ class _MaintenanceHistoryScreenState extends State<MaintenanceHistoryScreen> {
   }
 
   Future<void> _deleteRecord(String id) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: const Text('هل تبي تحذف هذا السجل نهائياً؟'),
+        title: Text(l10n.deleteConfirmation),
+        content: Text(l10n.deleteMaintenanceConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف', style: TextStyle(color: Colors.red)),
+            child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -70,12 +72,13 @@ class _MaintenanceHistoryScreenState extends State<MaintenanceHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text('سجل صيانة ${widget.car.label}')),
+      appBar: AppBar(title: Text(l10n.maintenanceHistoryFor(widget.car.label))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _records.isEmpty
-              ? const Center(child: Text('لا يوجد سجل صيانة لهذي السيارة بعد'))
+              ? Center(child: Text(l10n.noMaintenanceHistory))
               : RefreshIndicator(
                   onRefresh: _loadRecords,
                   child: ListView.builder(
@@ -101,7 +104,7 @@ class _MaintenanceHistoryScreenState extends State<MaintenanceHistoryScreen> {
                                             fontWeight: FontWeight.bold)),
                                   ),
                                   if (r.cost != null)
-                                    Text('${r.cost} ر.س',
+                                    Text('${r.cost} ${l10n.sarShort}',
                                         style: const TextStyle(
                                             fontSize: 13,
                                             color: Colors.green,
@@ -118,8 +121,7 @@ class _MaintenanceHistoryScreenState extends State<MaintenanceHistoryScreen> {
                                   '${r.date.year}-${r.date.month.toString().padLeft(2, '0')}-${r.date.day.toString().padLeft(2, '0')}${r.workshop != null ? ' • ${r.workshop}' : ''}',
                                   style: const TextStyle(
                                       fontSize: 13, color: Colors.grey)),
-                              if (r.notes != null &&
-                                  r.notes!.isNotEmpty) ...[
+                              if (r.notes != null && r.notes!.isNotEmpty) ...[
                                 const SizedBox(height: 6),
                                 Text(r.notes!,
                                     style: const TextStyle(fontSize: 13)),
@@ -130,12 +132,12 @@ class _MaintenanceHistoryScreenState extends State<MaintenanceHistoryScreen> {
                                   onTap: () =>
                                       _showInvoiceImage(r.invoiceImageBase64!),
                                   child: Row(
-                                    children: const [
-                                      Icon(Icons.receipt_long_outlined,
+                                    children: [
+                                      const Icon(Icons.receipt_long_outlined,
                                           size: 16, color: Color(0xFF1E3A5F)),
-                                      SizedBox(width: 4),
-                                      Text('عرض الفاتورة',
-                                          style: TextStyle(
+                                      const SizedBox(width: 4),
+                                      Text(l10n.viewInvoice,
+                                          style: const TextStyle(
                                               fontSize: 12,
                                               color: Color(0xFF1E3A5F))),
                                     ],

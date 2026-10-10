@@ -2,17 +2,19 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
+import '../theme/app_design_system.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final bool embedded;
+  const HistoryScreen({super.key, this.embedded = false});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  static const String baseUrl =
-      'https://car-ai-backend-7gpb.onrender.com';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   bool _isLoading = true;
   String? _errorText;
@@ -55,9 +57,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (_selectedFilter == 'الكل') return _items;
     return _items.where((item) {
       final result = (item['result'] as Map?) ?? {};
-      return result['severity'] == _selectedFilter;
+      return _severityAr(result['severity']?.toString()) == _selectedFilter;
     }).toList();
   }
+
+  String _severityAr(String? severity) => switch (severity) {
+        'critical' || 'high' => 'عالية',
+        'medium' => 'متوسطة',
+        'low' => 'منخفضة',
+        _ => severity ?? 'غير محددة',
+      };
 
   Future<void> _deleteItem(String id) async {
     final confirmed = await showDialog<bool>(
@@ -72,7 +81,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('حذف'),
           ),
@@ -107,13 +116,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Color _severityColor(String? severity) {
     switch (severity) {
       case 'عالية':
-        return const Color(0xFFD32F2F);
+        return AppColors.danger;
       case 'متوسطة':
-        return const Color(0xFFF57C00);
+        return AppColors.warning;
       case 'منخفضة':
-        return const Color(0xFF388E3C);
+        return AppColors.success;
       default:
-        return Colors.grey;
+        return AppColors.unknown;
     }
   }
 
@@ -135,8 +144,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
     try {
       final date = DateTime.parse(isoDate).toLocal();
       final months = [
-        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+        'يناير',
+        'فبراير',
+        'مارس',
+        'أبريل',
+        'مايو',
+        'يونيو',
+        'يوليو',
+        'أغسطس',
+        'سبتمبر',
+        'أكتوبر',
+        'نوفمبر',
+        'ديسمبر'
       ];
       final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
       final period = date.hour >= 12 ? 'م' : 'ص';
@@ -149,7 +168,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _showDetails(Map item) {
     final result = (item['result'] as Map?) ?? {};
-    final severity = result['severity'] as String?;
+    final severity = _severityAr(result['severity']?.toString());
     final color = _severityColor(severity);
 
     showModalBottomSheet(
@@ -192,7 +211,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('الخطورة: ${severity ?? "غير محددة"}',
+                  child: Text('الخطورة: $severity',
                       style: TextStyle(
                           color: color,
                           fontSize: 12,
@@ -204,8 +223,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 if (result['recommendations'] != null) ...[
                   const SizedBox(height: 12),
                   const Text('التوصيات:',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 6),
                   ...List<String>.from(result['recommendations']).map(
                     (r) => Padding(
@@ -214,7 +233,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Icon(Icons.check_circle,
-                              size: 16, color: Color(0xFF1E3A5F)),
+                              size: 16, color: AppColors.accent),
                           const SizedBox(width: 6),
                           Expanded(
                               child: Text(r,
@@ -231,13 +250,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Row(
                     children: [
                       const Icon(Icons.payments_outlined,
-                          size: 18, color: Colors.grey),
+                          size: 18, color: AppColors.steel),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                             'التكلفة التقديرية: ${result['estimated_cost']}',
                             style: const TextStyle(
-                                fontSize: 13, color: Colors.grey)),
+                                fontSize: 13, color: AppColors.steel)),
                       ),
                     ],
                   ),
@@ -262,19 +281,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
         itemBuilder: (context, index) {
           final filter = _filters[index];
           final isSelected = filter == _selectedFilter;
-          final color = filter == 'الكل' ? const Color(0xFF1E3A5F) : _severityColor(filter);
+          final color =
+              filter == 'الكل' ? AppColors.accent : _severityColor(filter);
           return ChoiceChip(
             label: Text(filter),
             selected: isSelected,
             onSelected: (_) => setState(() => _selectedFilter = filter),
             selectedColor: color.withValues(alpha: 0.15),
             labelStyle: TextStyle(
-              color: isSelected ? color : Colors.grey.shade600,
+              color: isSelected ? color : AppColors.steel,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               fontSize: 13,
             ),
             side: BorderSide(
-              color: isSelected ? color : Colors.grey.shade300,
+              color: isSelected ? color : AppColors.border,
             ),
             backgroundColor: Colors.transparent,
           );
@@ -293,12 +313,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E3A5F).withValues(alpha: 0.06),
+                color: AppColors.accent.withValues(alpha: 0.06),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                  noneAtAll ? Icons.history_rounded : Icons.filter_alt_off_outlined,
-                  size: 40, color: const Color(0xFF1E3A5F).withValues(alpha: 0.5)),
+                  noneAtAll
+                      ? Icons.history_rounded
+                      : Icons.filter_alt_off_outlined,
+                  size: 40,
+                  color: AppColors.accent.withValues(alpha: 0.5)),
             ),
             const SizedBox(height: 16),
             Text(
@@ -306,7 +329,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ? 'لا يوجد أي تشخيصات محفوظة بعد'
                   : 'لا يوجد تشخيصات بخطورة "$_selectedFilter"',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              style: const TextStyle(fontSize: 13, color: AppColors.muted),
             ),
           ],
         ),
@@ -316,7 +339,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildItemCard(Map item) {
     final result = (item['result'] as Map?) ?? {};
-    final severity = result['severity'] as String?;
+    final severity = _severityAr(result['severity']?.toString());
     final color = _severityColor(severity);
     final id = item['id'].toString();
     final car = (item['car'] as Map?) ?? {};
@@ -336,7 +359,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: AppColors.midnight.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -361,20 +384,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   if (carLabel != null)
                     Text(
                       carLabel,
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade600),
+                      style:
+                          const TextStyle(fontSize: 11, color: AppColors.steel),
                     ),
                   const SizedBox(height: 2),
                   Text(
                     _formatDate(item['timestamp'] as String?),
                     style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        const TextStyle(fontSize: 11, color: AppColors.muted),
                   ),
                 ],
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.grey),
+              icon: const Icon(Icons.delete_outline, color: AppColors.muted),
               onPressed: () => _deleteItem(id),
             ),
           ],
@@ -389,51 +412,63 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.embedded,
         title: const Text('سجل التشخيصات'),
-        centerTitle: true,
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            if (!_isLoading && _errorText == null && _items.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildFilterBar(),
-              const SizedBox(height: 8),
-            ],
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _loadHistory,
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _errorText != null
-                        ? ListView(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 80),
-                                child: Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(24),
-                                    child: Text(_errorText!,
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 14)),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : filtered.isEmpty
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 920),
+            child: Column(
+              children: [
+                if (!_isLoading && _errorText == null && _items.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _buildFilterBar(),
+                  const SizedBox(height: 8),
+                ],
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _loadHistory,
+                    child: _isLoading
+                        ? const AppStateView(
+                            icon: Icons.history_rounded,
+                            title: 'جاري تحميل سجل السيارة',
+                            loading: true)
+                        : _errorText != null
                             ? ListView(
-                                children: [_buildEmptyState()],
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 80),
+                                    child: Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(24),
+                                        child: AppStateView(
+                                          icon: Icons.cloud_off_outlined,
+                                          title: 'تعذر تحميل السجل',
+                                          message: _errorText!,
+                                          actionLabel: 'إعادة المحاولة',
+                                          onAction: _loadHistory,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               )
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: filtered.length,
-                                itemBuilder: (context, index) =>
-                                    _buildItemCard(filtered[index]),
-                              ),
-              ),
+                            : filtered.isEmpty
+                                ? ListView(
+                                    children: [_buildEmptyState()],
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.all(16),
+                                    itemCount: filtered.length,
+                                    itemBuilder: (context, index) =>
+                                        _buildItemCard(filtered[index]),
+                                  ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

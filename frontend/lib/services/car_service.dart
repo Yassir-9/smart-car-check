@@ -26,17 +26,7 @@ class CarService {
 
   static Future<List<CarModel>> loadCars() async {
     final snapshot = await _carsRef.get();
-    if (snapshot.docs.isEmpty) {
-      final defaultCar = CarModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        brand: 'تويوتا',
-        model: 'كامري',
-        year: 2022,
-      );
-      await saveCars([defaultCar]);
-      await setActiveCarId(defaultCar.id);
-      return [defaultCar];
-    }
+    if (snapshot.docs.isEmpty) return [];
     return snapshot.docs.map((doc) => CarModel.fromJson(doc.data())).toList();
   }
 

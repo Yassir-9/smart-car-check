@@ -1,6 +1,11 @@
 # Node.js
 node_modules/
 backend/.env
+backend/.env.*
+!backend/.env.example
+backend/yasr.json
+backend/*service-account*.json
+backend/credentials/
 *.log
 
 # Flutter
@@ -15,3 +20,9 @@ frontend/.packages
 smart-car-check.keystore
 smart-car-check-keystore.zip
 *.keystore
+*.jks
+*.p12
+*.pem
+frontend/android/key.properties
+
+.tool-state/

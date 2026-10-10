@@ -1,11 +1,11 @@
 {
-    "name": "تشخيص السيارة الذكي",
-    "short_name": "تشخيص السيارة",
+    "name": "Smart Car Check | فحص السيارة الذكي",
+    "short_name": "Smart Car Check",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F5F7FA",
     "theme_color": "#1E3A5F",
-    "description": "تطبيق تشخيص أعطال السيارات بالذكاء الاصطناعي",
+    "description": "تشخيص ذكي للسيارة وسجل الصيانة | AI vehicle diagnosis and maintenance records",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

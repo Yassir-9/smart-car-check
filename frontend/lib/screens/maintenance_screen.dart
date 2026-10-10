@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/maintenance_reminder.dart';
 import '../services/maintenance_service.dart';
 import '../services/notification_service.dart';
+import '../theme/app_design_system.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -93,66 +95,83 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('تنبيهات الصيانة الدورية')),
+      appBar: AppBar(title: Text(l10n.maintenanceReminders)),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? AppStateView(
+              icon: Icons.event_outlined,
+              title: l10n.loadingMaintenanceReminders,
+              loading: true)
           : _reminders.isEmpty
-              ? const Center(child: Text('لا توجد تنبيهات صيانة حالياً'))
+              ? AppStateView(
+                  icon: Icons.event_available_outlined,
+                  title: l10n.noMaintenanceReminders,
+                  message: l10n.noMaintenanceRemindersMessage,
+                  actionLabel: l10n.addReminder,
+                  onAction: _addReminder)
               : ListView.builder(
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   itemCount: _reminders.length,
                   itemBuilder: (context, index) {
                     final reminder = _reminders[index];
                     final now = DateTime.now();
                     final daysLeft = reminder.dueDate.difference(now).inDays;
                     final isOverdue = daysLeft < 0 && !reminder.isDone;
-                    final isSoon = daysLeft >= 0 && daysLeft <= 7 && !reminder.isDone;
+                    final isSoon =
+                        daysLeft >= 0 && daysLeft <= 7 && !reminder.isDone;
 
-                    return Dismissible(
-                      key: ValueKey(reminder.id),
-                      direction: DismissDirection.endToStart,
-                      onDismissed: (_) => _deleteReminder(reminder),
-                      background: Container(
-                        color: Colors.red,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
-                      ),
-                      child: ListTile(
-                        leading: Icon(
-                          reminder.isDone
-                              ? Icons.check_circle
-                              : isOverdue
-                                  ? Icons.warning
-                                  : isSoon
-                                      ? Icons.notifications_active
-                                      : Icons.event,
-                          color: reminder.isDone
-                              ? Colors.green
-                              : isOverdue
-                                  ? Colors.red
-                                  : isSoon
-                                      ? Colors.orange
-                                      : null,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Card(
+                          child: Dismissible(
+                        key: ValueKey(reminder.id),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (_) => _deleteReminder(reminder),
+                        background: Container(
+                          color: AppColors.danger,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: const Icon(Icons.delete, color: Colors.white),
                         ),
-                        title: Text(
-                          reminder.title,
-                          style: TextStyle(
-                            decoration: reminder.isDone
-                                ? TextDecoration.lineThrough
-                                : null,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 7),
+                          leading: Icon(
+                            reminder.isDone
+                                ? Icons.check_circle
+                                : isOverdue
+                                    ? Icons.warning
+                                    : isSoon
+                                        ? Icons.notifications_active
+                                        : Icons.event,
+                            color: reminder.isDone
+                                ? AppColors.success
+                                : isOverdue
+                                    ? AppColors.danger
+                                    : isSoon
+                                        ? AppColors.warning
+                                        : AppColors.accent,
+                          ),
+                          title: Text(
+                            reminder.title,
+                            style: TextStyle(
+                              decoration: reminder.isDone
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          subtitle: Text(
+                            isOverdue
+                                ? l10n.overdueDays(-daysLeft)
+                                : '${l10n.daysRemaining(daysLeft)}${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
+                          ),
+                          trailing: Checkbox(
+                            value: reminder.isDone,
+                            onChanged: (_) => _toggleDone(reminder),
                           ),
                         ),
-                        subtitle: Text(
-                          isOverdue
-                              ? 'متأخر منذ ${-daysLeft} يوم'
-                              : 'باقي $daysLeft يوم${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
-                        ),
-                        trailing: Checkbox(
-                          value: reminder.isDone,
-                          onChanged: (_) => _toggleDone(reminder),
-                        ),
-                      ),
+                      )),
                     );
                   },
                 ),
@@ -185,29 +204,31 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('تنبيه صيانة جديد'),
+      title: Text(l10n.newMaintenanceReminder),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'نوع الصيانة (مثال: تغيير الزيت)',
+              decoration: InputDecoration(
+                labelText: l10n.maintenanceTypeExample,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _notesController,
-              decoration: const InputDecoration(labelText: 'ملاحظات (اختياري)'),
+              decoration: InputDecoration(labelText: l10n.notesOptional),
             ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'التاريخ: ${_dueDate.year}-${_dueDate.month.toString().padLeft(2, '0')}-${_dueDate.day.toString().padLeft(2, '0')}',
+                  l10n.dateLabel(
+                      '${_dueDate.year}-${_dueDate.month.toString().padLeft(2, '0')}-${_dueDate.day.toString().padLeft(2, '0')}'),
                 ),
                 TextButton(
                   onPressed: () async {
@@ -215,13 +236,14 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                       context: context,
                       initialDate: _dueDate,
                       firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+                      lastDate:
+                          DateTime.now().add(const Duration(days: 365 * 3)),
                     );
                     if (picked != null) {
                       setState(() => _dueDate = picked);
                     }
                   },
-                  child: const Text('تغيير'),
+                  child: Text(l10n.change),
                 ),
               ],
             ),
@@ -231,7 +253,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('إلغاء'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -248,7 +270,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
               ),
             );
           },
-          child: const Text('حفظ'),
+          child: Text(l10n.save),
         ),
       ],
     );

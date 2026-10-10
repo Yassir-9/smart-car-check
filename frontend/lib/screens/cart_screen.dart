@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
+import '../l10n/app_localizations.dart';
 import '../services/cart_service.dart';
 
 class CartScreen extends StatefulWidget {
@@ -13,12 +15,14 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  static const String baseUrl = 'https://car-ai-backend-7gpb.onrender.com/api';
+  static String get baseUrl => ApiConfig.apiBaseUrl;
 
   bool _isCheckingOut = false;
   String? _errorText;
 
   Future<void> _checkout() async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     setState(() {
       _isCheckingOut = true;
       _errorText = null;
@@ -31,8 +35,9 @@ class _CartScreenState extends State<CartScreen> {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'X-App-Locale': locale,
         },
-        body: jsonEncode({'partIds': partIds}),
+        body: jsonEncode({'partIds': partIds, 'locale': locale}),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -45,10 +50,11 @@ class _CartScreenState extends State<CartScreen> {
         }
       } else {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        setState(() => _errorText = data['error'] ?? 'تعذر إنشاء عملية الدفع');
+        setState(
+            () => _errorText = data['error'] ?? l10n.paymentCreationFailed);
       }
     } catch (e) {
-      setState(() => _errorText = 'تعذر الاتصال بالسيرفر');
+      setState(() => _errorText = l10n.serverConnectionFailed);
     } finally {
       if (mounted) setState(() => _isCheckingOut = false);
     }
@@ -56,11 +62,12 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final items = CartService.items;
     return Scaffold(
-      appBar: AppBar(title: const Text('سلة المشتريات')),
+      appBar: AppBar(title: Text(l10n.shoppingCart)),
       body: items.isEmpty
-          ? const Center(child: Text('السلة فاضية حالياً'))
+          ? Center(child: Text(l10n.emptyCart))
           : Column(
               children: [
                 Expanded(
@@ -77,12 +84,13 @@ class _CartScreenState extends State<CartScreen> {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('${part.price} ر.س',
+                              Text('${part.price} ${l10n.sarShort}',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF2E7D32))),
                               IconButton(
-                                icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                                icon: const Icon(Icons.close,
+                                    color: Colors.red, size: 20),
                                 onPressed: () {
                                   CartService.remove(part.id);
                                   setState(() {});
@@ -98,7 +106,8 @@ class _CartScreenState extends State<CartScreen> {
                 if (_errorText != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(_errorText!, style: const TextStyle(color: Colors.red)),
+                    child: Text(_errorText!,
+                        style: const TextStyle(color: Colors.red)),
                   ),
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -107,8 +116,11 @@ class _CartScreenState extends State<CartScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('الإجمالي', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          Text('${CartService.total.toStringAsFixed(0)} ر.س',
+                          Text(l10n.total,
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(
+                              '${CartService.total.toStringAsFixed(0)} ${l10n.sarShort}',
                               style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -123,9 +135,11 @@ class _CartScreenState extends State<CartScreen> {
                           onPressed: _isCheckingOut ? null : _checkout,
                           child: _isCheckingOut
                               ? const SizedBox(
-                                  width: 20, height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Text('إتمام الشراء'),
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : Text(l10n.checkout),
                         ),
                       ),
                     ],

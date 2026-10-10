@@ -50,7 +50,8 @@ class HealthGauge extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 _label,
-                style: TextStyle(fontSize: size * 0.07, color: Colors.grey[600]),
+                style:
+                    TextStyle(fontSize: size * 0.07, color: Colors.grey[600]),
               ),
             ],
           ),
@@ -65,7 +66,8 @@ class _GaugePainter extends CustomPainter {
   final Color color;
   final Color trackColor;
 
-  _GaugePainter({required this.progress, required this.color, required this.trackColor});
+  _GaugePainter(
+      {required this.progress, required this.color, required this.trackColor});
 
   static const double _startAngle = 2.35619; // 135 degrees
   static const double _sweepAngle = 4.71239; // 270 degrees
@@ -94,7 +96,8 @@ class _GaugePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(arcRect, _startAngle, _sweepAngle, false, trackPaint);
-    canvas.drawArc(arcRect, _startAngle, _sweepAngle * progress.clamp(0, 1), false, progressPaint);
+    canvas.drawArc(arcRect, _startAngle, _sweepAngle * progress.clamp(0, 1),
+        false, progressPaint);
     canvas.clipRect(rect);
   }
 

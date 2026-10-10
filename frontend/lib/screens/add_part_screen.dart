@@ -3,9 +3,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
 import 'package:image_picker/image_picker.dart';
 import '../data/car_models_data.dart';
 import '../models/part_listing.dart';
+import '../l10n/app_localizations.dart';
+import '../utils/localized_vehicle_text.dart';
 
 class AddPartScreen extends StatefulWidget {
   final PartListing? existingPart;
@@ -17,13 +20,29 @@ class AddPartScreen extends StatefulWidget {
 }
 
 class _AddPartScreenState extends State<AddPartScreen> {
-  static const String baseUrl =
-      'https://car-ai-backend-7gpb.onrender.com/api/parts';
+  static String get baseUrl => '${ApiConfig.apiBaseUrl}/parts';
 
   static const List<String> _brands = [
-    'تويوتا', 'هوندا', 'نيسان', 'هيونداي', 'كيا', 'فورد', 'شيفروليه',
-    'مرسيدس', 'بي إم دبليو', 'أودي', 'لكزس', 'مازدا', 'ميتسوبيشي',
-    'جيب', 'جي إم سي', 'دودج', 'إنفينيتي', 'سوزوكي', 'فولكس فاجن', 'أخرى',
+    'تويوتا',
+    'هوندا',
+    'نيسان',
+    'هيونداي',
+    'كيا',
+    'فورد',
+    'شيفروليه',
+    'مرسيدس',
+    'بي إم دبليو',
+    'أودي',
+    'لكزس',
+    'مازدا',
+    'ميتسوبيشي',
+    'جيب',
+    'جي إم سي',
+    'دودج',
+    'إنفينيتي',
+    'سوزوكي',
+    'فولكس فاجن',
+    'أخرى',
   ];
 
   final _partNameController = TextEditingController();
@@ -63,7 +82,8 @@ class _AddPartScreenState extends State<AddPartScreen> {
       if (_brands.contains(existing.carBrand)) {
         _selectedBrand = existing.carBrand;
       }
-      final models = CarModelsData.modelsByBrand[_selectedBrand] ?? const <String>[];
+      final models =
+          CarModelsData.modelsByBrand[_selectedBrand] ?? const <String>[];
       if (models.contains(existing.carModel)) {
         _selectedModel = existing.carModel;
       } else {
@@ -104,6 +124,8 @@ class _AddPartScreenState extends State<AddPartScreen> {
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     final modelsForBrand =
         CarModelsData.modelsByBrand[_selectedBrand] ?? const <String>[];
     final model = modelsForBrand.isEmpty
@@ -113,7 +135,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
     if (_partNameController.text.trim().isEmpty ||
         _phoneController.text.trim().isEmpty ||
         model.isEmpty) {
-      setState(() => _errorText = 'عبّي اسم القطعة والموديل ورقم الجوال');
+      setState(() => _errorText = l10n.requiredPartFields);
       return;
     }
 
@@ -151,10 +173,12 @@ class _AddPartScreenState extends State<AddPartScreen> {
         'partBrand': _partBrandController.text.trim().isEmpty
             ? null
             : _partBrandController.text.trim(),
+        'locale': locale,
       });
       final headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
+        'X-App-Locale': locale,
       };
       final response = _isEditing
           ? await http.put(uri, headers: headers, body: body)
@@ -163,10 +187,11 @@ class _AddPartScreenState extends State<AddPartScreen> {
       if (response.statusCode == 200) {
         if (mounted) Navigator.pop(context, true);
       } else {
-        setState(() => _errorText = 'خطأ من السيرفر: ${response.statusCode}');
+        setState(
+            () => _errorText = l10n.serverErrorStatus(response.statusCode));
       }
     } catch (e) {
-      setState(() => _errorText = 'تعذر الاتصال بالسيرفر');
+      setState(() => _errorText = l10n.serverConnectionFailed);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -174,64 +199,72 @@ class _AddPartScreenState extends State<AddPartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final models = CarModelsData.modelsByBrand[_selectedBrand] ?? const <String>[];
+    final l10n = AppLocalizations.of(context);
+    final models =
+        CarModelsData.modelsByBrand[_selectedBrand] ?? const <String>[];
     if (models.isNotEmpty && !models.contains(_selectedModel)) {
       _selectedModel = models.first;
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'تعديل القطعة' : 'إضافة قطعة للبيع')),
+      appBar:
+          AppBar(title: Text(_isEditing ? l10n.editPart : l10n.addPartForSale)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('اسم القطعة', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.partName,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _partNameController,
-              decoration: const InputDecoration(hintText: 'مثال: حامل مساند خلفي'),
+              decoration: InputDecoration(hintText: l10n.partNameHint),
             ),
             const SizedBox(height: 16),
-            const Text('شركة السيارة المتوافقة', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.compatibleVehicleBrand,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               initialValue: _selectedBrand,
               isExpanded: true,
               items: _brands
-                  .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                  .map((b) =>
+                      DropdownMenuItem(value: b, child: Text(l10n.carBrand(b))))
                   .toList(),
               onChanged: (val) {
                 if (val != null) setState(() => _selectedBrand = val);
               },
             ),
             const SizedBox(height: 16),
-            const Text('حالة القطعة', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.partCondition,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'جديدة', label: Text('جديدة')),
-                ButtonSegment(value: 'مستعملة', label: Text('مستعملة')),
+              segments: [
+                ButtonSegment(value: 'جديدة', label: Text(l10n.newPart)),
+                ButtonSegment(value: 'مستعملة', label: Text(l10n.usedPart)),
               ],
               selected: {_selectedCondition},
               onSelectionChanged: (val) =>
                   setState(() => _selectedCondition = val.first),
             ),
             const SizedBox(height: 16),
-            const Text('الشركة المصنّعة للقطعة (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.partManufacturerOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _partBrandController,
-              decoration: const InputDecoration(hintText: 'مثال: Bosch، Denso، أصلي وكالة'),
+              decoration: InputDecoration(hintText: l10n.partManufacturerHint),
             ),
             const SizedBox(height: 16),
-            const Text('الموديل', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.carModel,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             models.isEmpty
                 ? TextField(
                     controller: _customModelController,
-                    decoration: const InputDecoration(hintText: 'اكتب اسم الموديل'),
+                    decoration: InputDecoration(hintText: l10n.carModelName),
                   )
                 : DropdownButtonFormField<String>(
                     initialValue: _selectedModel,
@@ -242,15 +275,17 @@ class _AddPartScreenState extends State<AddPartScreen> {
                     onChanged: (val) => setState(() => _selectedModel = val),
                   ),
             const SizedBox(height: 16),
-            const Text('السعر (اختياري)', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.priceOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _priceController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: 'مثال: 300'),
+              decoration: const InputDecoration(hintText: '300'),
             ),
             const SizedBox(height: 16),
-            const Text('رقم جوالك للتواصل', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.sellerPhone,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _phoneController,
@@ -258,24 +293,25 @@ class _AddPartScreenState extends State<AddPartScreen> {
               decoration: const InputDecoration(hintText: '05XXXXXXXX'),
             ),
             const SizedBox(height: 16),
-            const Text('ملاحظات (اختياري)', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.notesOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _notesController,
               maxLines: 3,
-              decoration: const InputDecoration(hintText: 'حالة القطعة، إلخ'),
+              decoration: InputDecoration(hintText: l10n.partNotesHint),
             ),
             const SizedBox(height: 16),
-            const Text('رقم القطعة الأصلي OEM (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.oemNumberOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _oemController,
-              decoration: const InputDecoration(hintText: 'مثال: 97128A5000'),
+              decoration: const InputDecoration(hintText: '97128A5000'),
             ),
             const SizedBox(height: 16),
-            const Text('صورة القطعة (اختياري)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(l10n.partImageOptional,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             _partImage != null
                 ? Stack(
@@ -322,7 +358,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                     : OutlinedButton.icon(
                         onPressed: _pickImage,
                         icon: const Icon(Icons.image_outlined),
-                        label: const Text('إرفاق صورة القطعة'),
+                        label: Text(l10n.attachPartImage),
                       )),
             if (_errorText != null) ...[
               const SizedBox(height: 12),
@@ -336,9 +372,11 @@ class _AddPartScreenState extends State<AddPartScreen> {
                 onPressed: _isSubmitting ? null : _submit,
                 child: _isSubmitting
                     ? const SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text(_isEditing ? 'حفظ التعديلات' : 'نشر القطعة'),
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Text(_isEditing ? l10n.saveChanges : l10n.publishPart),
               ),
             ),
           ],

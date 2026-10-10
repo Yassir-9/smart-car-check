@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import '../config/api_config.dart';
+import '../l10n/app_localizations.dart';
 import '../models/part_listing.dart';
 import 'add_part_screen.dart';
 
@@ -13,7 +15,7 @@ class SellerDashboardScreen extends StatefulWidget {
 }
 
 class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
-  static const String baseUrl = 'https://car-ai-backend-7gpb.onrender.com/api';
+  static String get baseUrl => ApiConfig.apiBaseUrl;
 
   bool _isLoading = true;
   String? _errorText;
@@ -27,18 +29,28 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   }
 
   Future<void> _loadAll() async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     setState(() {
       _isLoading = true;
       _errorText = null;
     });
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
       final token = await FirebaseAuth.instance.currentUser?.getIdToken();
 
-      final partsResponse = await http.get(Uri.parse('$baseUrl/parts'));
+      final partsResponse = await http.get(
+        Uri.parse('$baseUrl/parts/mine'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'X-App-Locale': locale,
+        },
+      );
       final ordersResponse = await http.get(
         Uri.parse('$baseUrl/orders/selling'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+          'X-App-Locale': locale,
+        },
       );
 
       List<PartListing> myParts = [];
@@ -46,7 +58,6 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
         final data = jsonDecode(utf8.decode(partsResponse.bodyBytes)) as List;
         myParts = data
             .map((e) => PartListing.fromJson(e as Map<String, dynamic>))
-            .where((p) => p.ownerId == uid)
             .toList();
       }
 
@@ -65,7 +76,7 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorText = 'تعذر تحميل بيانات لوحة البائع';
+        _errorText = l10n.sellerDashboardLoadFailed;
         _isLoading = false;
       });
     }
@@ -86,16 +97,21 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   }
 
   Future<void> _deletePart(String id) async {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تأكيد الحذف'),
-        content: const Text('هل تبي تحذف هذي القطعة نهائياً؟'),
+        title: Text(l10n.deleteConfirmation),
+        content: Text(l10n.deletePartConfirm),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.cancel)),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('حذف', style: TextStyle(color: Colors.red))),
+              child:
+                  Text(l10n.delete, style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -104,7 +120,10 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
       final token = await FirebaseAuth.instance.currentUser?.getIdToken();
       final response = await http.delete(
         Uri.parse('$baseUrl/parts/$id'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+          'X-App-Locale': locale,
+        },
       );
       if (response.statusCode == 200) _loadAll();
     } catch (e) {
@@ -114,9 +133,10 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('لوحة تحكم البائع'),
+        title: Text(l10n.sellerDashboard),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadAll),
         ],
@@ -133,46 +153,60 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                       Row(
                         children: [
                           Expanded(
-                              child: _statCard('منتجاتي', '${_myParts.length}',
-                                  Icons.inventory_2_outlined, const Color(0xFF1E3A5F))),
+                              child: _statCard(
+                                  l10n.myListings,
+                                  '${_myParts.length}',
+                                  Icons.inventory_2_outlined,
+                                  const Color(0xFF1E3A5F))),
                           const SizedBox(width: 10),
                           Expanded(
-                              child: _statCard('طلبات مبيعة', '${_myOrders.length}',
-                                  Icons.receipt_long_outlined, const Color(0xFFF57C00))),
+                              child: _statCard(
+                                  l10n.soldOrders,
+                                  '${_myOrders.length}',
+                                  Icons.receipt_long_outlined,
+                                  const Color(0xFFF57C00))),
                           const SizedBox(width: 10),
                           Expanded(
-                              child: _statCard('إجمالي الإيرادات',
-                                  '${_myRevenue.toStringAsFixed(0)} ر.س',
-                                  Icons.payments_outlined, const Color(0xFF388E3C))),
+                              child: _statCard(
+                                  l10n.totalRevenue,
+                                  '${_myRevenue.toStringAsFixed(0)} ${l10n.sarShort}',
+                                  Icons.payments_outlined,
+                                  const Color(0xFF388E3C))),
                         ],
                       ),
                       const SizedBox(height: 20),
-                      const Text('منتجاتي المعروضة',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(l10n.listedProducts,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 8),
                       if (_myParts.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('لم تعرض أي قطعة بعد', style: TextStyle(color: Colors.grey)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(l10n.noListings,
+                              style: const TextStyle(color: Colors.grey)),
                         )
                       else
                         ..._myParts.map((part) => Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: ListTile(
                                 title: Text(part.partName),
-                                subtitle: Text('${part.carBrand} ${part.carModel}'
-                                    '${part.price != null ? ' - ${part.price} ر.س' : ''}'),
+                                subtitle: Text(
+                                    '${part.carBrand} ${part.carModel}'
+                                    '${part.price != null ? ' - ${part.price} ${l10n.sarShort}' : ''}'),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.edit_outlined, size: 20),
+                                      icon: const Icon(Icons.edit_outlined,
+                                          size: 20),
                                       onPressed: () async {
-                                        final updated = await Navigator.push<bool>(
+                                        final updated =
+                                            await Navigator.push<bool>(
                                           context,
                                           MaterialPageRoute(
                                               builder: (context) =>
-                                                  AddPartScreen(existingPart: part)),
+                                                  AddPartScreen(
+                                                      existingPart: part)),
                                         );
                                         if (updated == true) _loadAll();
                                       },
@@ -187,19 +221,22 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                               ),
                             )),
                       const SizedBox(height: 20),
-                      const Text('طلبات بيعي',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text(l10n.mySalesOrders,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 8),
                       if (_myOrders.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('لا توجد طلبات بيع بعد', style: TextStyle(color: Colors.grey)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(l10n.noSalesOrders,
+                              style: const TextStyle(color: Colors.grey)),
                         )
                       else
                         ..._myOrders.map((order) {
                           final uid = FirebaseAuth.instance.currentUser?.uid;
                           final items = (order['items'] as List?) ?? [];
-                          final myItems = items.where((i) => i['sellerId'] == uid).toList();
+                          final myItems =
+                              items.where((i) => i['sellerId'] == uid).toList();
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: Padding(
@@ -208,7 +245,7 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: myItems
                                     .map((i) => Text(
-                                        '${i['partName']} - ${i['price']} ر.س',
+                                        '${i['partName']} - ${i['price']} ${l10n.sarShort}',
                                         style: const TextStyle(fontSize: 13)))
                                     .toList(),
                               ),
@@ -234,9 +271,12 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
           Icon(icon, color: color, size: 20),
           const SizedBox(height: 4),
           Text(value,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey), textAlign: TextAlign.center),
+          Text(label,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              textAlign: TextAlign.center),
         ],
       ),
     );

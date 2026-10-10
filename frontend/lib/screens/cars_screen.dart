@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/car_model.dart';
 import '../services/car_service.dart';
 import '../data/car_models_data.dart';
 import '../models/maintenance_reminder.dart';
 import '../services/maintenance_service.dart';
+import '../theme/app_design_system.dart';
+import '../utils/localized_vehicle_text.dart';
 
 class CarsScreen extends StatefulWidget {
-  const CarsScreen({super.key});
+  final bool embedded;
+  const CarsScreen({super.key, this.embedded = false});
 
   @override
   State<CarsScreen> createState() => _CarsScreenState();
@@ -59,13 +63,16 @@ class _CarsScreenState extends State<CarsScreen> {
   Future<void> _selectCar(String id) async {
     await CarService.setActiveCarId(id);
     setState(() => _activeCarId = id);
-    if (mounted) Navigator.pop(context, true);
+    if (mounted && !widget.embedded) {
+      Navigator.pop(context, true);
+    }
   }
 
   Future<void> _deleteCar(String id) async {
+    final l10n = AppLocalizations.of(context);
     if (_cars.length <= 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يجب إبقاء سيارة واحدة على الأقل')),
+        SnackBar(content: Text(l10n.keepOneCar)),
       );
       return;
     }
@@ -74,17 +81,17 @@ class _CarsScreenState extends State<CarsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('حذف السيارة'),
-        content: const Text('هل تريد حذف هذه السيارة من قائمتك؟'),
+        title: Text(l10n.deleteCar),
+        content: Text(l10n.deleteCarConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -103,9 +110,10 @@ class _CarsScreenState extends State<CarsScreen> {
   }
 
   Future<void> _addOrEditCar({CarModel? existing}) async {
+    final l10n = AppLocalizations.of(context);
     final currentYear = DateTime.now().year;
-    final years = List<int>.generate(
-        currentYear - 1989, (i) => currentYear - i);
+    final years =
+        List<int>.generate(currentYear - 1989, (i) => currentYear - i);
 
     String selectedBrand = existing != null && _brands.contains(existing.brand)
         ? existing.brand
@@ -117,9 +125,10 @@ class _CarsScreenState extends State<CarsScreen> {
     );
     final brandModelsInit =
         CarModelsData.modelsByBrand[selectedBrand] ?? const <String>[];
-    String selectedModel = existing != null && brandModelsInit.contains(existing.model)
-        ? existing.model
-        : 'أخرى';
+    String selectedModel =
+        existing != null && brandModelsInit.contains(existing.model)
+            ? existing.model
+            : 'أخرى';
     final modelController = TextEditingController(
       text: existing != null && !brandModelsInit.contains(existing.model)
           ? existing.model
@@ -131,6 +140,8 @@ class _CarsScreenState extends State<CarsScreen> {
         TextEditingController(text: existing?.engineType ?? '');
     final transmissionController =
         TextEditingController(text: existing?.transmissionType ?? '');
+    final mileageController =
+        TextEditingController(text: existing?.currentMileage?.toString() ?? '');
     DateTime? insuranceExpiry = existing?.insuranceExpiry;
     DateTime? registrationExpiry = existing?.registrationExpiry;
     DateTime? inspectionExpiry = existing?.inspectionExpiry;
@@ -141,20 +152,22 @@ class _CarsScreenState extends State<CarsScreen> {
         builder: (context, setDialogState) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(existing == null ? 'إضافة سيارة جديدة' : 'تعديل السيارة'),
+          title: Text(existing == null ? l10n.addNewCar : l10n.editCar),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('الشركة المصنعة',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(l10n.manufacturer,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.steel)),
                 const SizedBox(height: 4),
                 DropdownButtonFormField<String>(
                   initialValue: selectedBrand,
                   isExpanded: true,
                   items: _brands
-                      .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                      .map((b) => DropdownMenuItem(
+                          value: b, child: Text(l10n.carBrand(b))))
                       .toList(),
                   onChanged: (val) {
                     if (val != null) {
@@ -166,22 +179,22 @@ class _CarsScreenState extends State<CarsScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: customBrandController,
-                    decoration: const InputDecoration(
-                        labelText: 'اكتب اسم الشركة المصنعة'),
+                    decoration:
+                        InputDecoration(labelText: l10n.manufacturerName),
                   ),
                 ],
                 const SizedBox(height: 12),
-                const Text('الموديل',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(l10n.carModel,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.steel)),
                 const SizedBox(height: 4),
                 Builder(builder: (context) {
-                  final models =
-                      CarModelsData.modelsByBrand[selectedBrand] ?? const <String>[];
+                  final models = CarModelsData.modelsByBrand[selectedBrand] ??
+                      const <String>[];
                   if (models.isEmpty) {
                     return TextField(
                       controller: modelController,
-                      decoration:
-                          const InputDecoration(labelText: 'اكتب اسم الموديل'),
+                      decoration: InputDecoration(labelText: l10n.carModelName),
                     );
                   }
                   final dropdownItems = [...models, 'أخرى'];
@@ -195,8 +208,9 @@ class _CarsScreenState extends State<CarsScreen> {
                         initialValue: selectedModel,
                         isExpanded: true,
                         items: dropdownItems
-                            .map((m) =>
-                                DropdownMenuItem(value: m, child: Text(m)))
+                            .map((m) => DropdownMenuItem(
+                                value: m,
+                                child: Text(m == 'أخرى' ? l10n.other : m)))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) {
@@ -208,23 +222,24 @@ class _CarsScreenState extends State<CarsScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: modelController,
-                          decoration: const InputDecoration(
-                              labelText: 'اكتب اسم الموديل'),
+                          decoration:
+                              InputDecoration(labelText: l10n.carModelName),
                         ),
                       ],
                     ],
                   );
                 }),
                 const SizedBox(height: 12),
-                const Text('سنة الصنع',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(l10n.manufactureYear,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.steel)),
                 const SizedBox(height: 4),
                 DropdownButtonFormField<int>(
                   initialValue: selectedYear,
                   isExpanded: true,
                   items: years
-                      .map((y) => DropdownMenuItem(
-                          value: y, child: Text(y.toString())))
+                      .map((y) =>
+                          DropdownMenuItem(value: y, child: Text(y.toString())))
                       .toList(),
                   onChanged: (val) {
                     if (val != null) {
@@ -233,23 +248,36 @@ class _CarsScreenState extends State<CarsScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                const Text('رقم الهيكل VIN (اختياري)',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(l10n.vinOptional,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.steel)),
                 const SizedBox(height: 4),
                 TextField(controller: vinController),
                 const SizedBox(height: 12),
-                const Text('نوع المحرك (اختياري)',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(l10n.engineTypeOptional,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.steel)),
                 const SizedBox(height: 4),
                 TextField(controller: engineController),
                 const SizedBox(height: 12),
-                const Text('نوع القير (اختياري)',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(l10n.transmissionTypeOptional,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.steel)),
                 const SizedBox(height: 4),
                 TextField(controller: transmissionController),
                 const SizedBox(height: 16),
+                Text(l10n.currentMileageOptional,
+                    style:
+                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                const SizedBox(height: 4),
+                TextField(
+                  controller: mileageController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(suffixText: l10n.kmShort),
+                ),
+                const SizedBox(height: 16),
                 _buildExpiryDateRow(
-                  label: 'انتهاء الاستمارة',
+                  label: l10n.registrationExpiry,
                   value: registrationExpiry,
                   context: context,
                   onChanged: (d) =>
@@ -257,19 +285,17 @@ class _CarsScreenState extends State<CarsScreen> {
                 ),
                 const SizedBox(height: 12),
                 _buildExpiryDateRow(
-                  label: 'انتهاء التأمين',
+                  label: l10n.insuranceExpiry,
                   value: insuranceExpiry,
                   context: context,
-                  onChanged: (d) =>
-                      setDialogState(() => insuranceExpiry = d),
+                  onChanged: (d) => setDialogState(() => insuranceExpiry = d),
                 ),
                 const SizedBox(height: 12),
                 _buildExpiryDateRow(
-                  label: 'انتهاء الفحص الدوري',
+                  label: l10n.inspectionExpiry,
                   value: inspectionExpiry,
                   context: context,
-                  onChanged: (d) =>
-                      setDialogState(() => inspectionExpiry = d),
+                  onChanged: (d) => setDialogState(() => inspectionExpiry = d),
                 ),
               ],
             ),
@@ -277,12 +303,13 @@ class _CarsScreenState extends State<CarsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء'),
+              child: Text(l10n.cancel),
             ),
             ElevatedButton(
               onPressed: () {
                 final modelsForBrand =
-                    CarModelsData.modelsByBrand[selectedBrand] ?? const <String>[];
+                    CarModelsData.modelsByBrand[selectedBrand] ??
+                        const <String>[];
                 final modelValue = modelsForBrand.isEmpty
                     ? modelController.text.trim()
                     : (selectedModel == 'أخرى'
@@ -295,7 +322,7 @@ class _CarsScreenState extends State<CarsScreen> {
                 }
                 Navigator.pop(context, true);
               },
-              child: const Text('حفظ'),
+              child: Text(l10n.save),
             ),
           ],
         ),
@@ -321,6 +348,7 @@ class _CarsScreenState extends State<CarsScreen> {
       brand: brand,
       model: model,
       year: year,
+      currentMileage: int.tryParse(mileageController.text.trim()),
       vin: vinController.text.trim().isEmpty ? null : vinController.text.trim(),
       engineType: engineController.text.trim().isEmpty
           ? null
@@ -349,6 +377,7 @@ class _CarsScreenState extends State<CarsScreen> {
   }
 
   Future<void> _syncExpiryReminders(CarModel car) async {
+    final l10n = AppLocalizations.of(context);
     final reminders = await MaintenanceService.loadReminders();
     reminders.removeWhere((r) =>
         r.id == '${car.id}_registration' ||
@@ -358,21 +387,21 @@ class _CarsScreenState extends State<CarsScreen> {
     if (car.registrationExpiry != null) {
       reminders.add(MaintenanceReminder(
         id: '${car.id}_registration',
-        title: 'انتهاء الاستمارة - ${car.label}',
+        title: '${l10n.registrationExpiry} - ${car.label}',
         dueDate: car.registrationExpiry!,
       ));
     }
     if (car.insuranceExpiry != null) {
       reminders.add(MaintenanceReminder(
         id: '${car.id}_insurance',
-        title: 'انتهاء التأمين - ${car.label}',
+        title: '${l10n.insuranceExpiry} - ${car.label}',
         dueDate: car.insuranceExpiry!,
       ));
     }
     if (car.inspectionExpiry != null) {
       reminders.add(MaintenanceReminder(
         id: '${car.id}_inspection',
-        title: 'انتهاء الفحص الدوري - ${car.label}',
+        title: '${l10n.inspectionExpiry} - ${car.label}',
         dueDate: car.inspectionExpiry!,
       ));
     }
@@ -386,12 +415,13 @@ class _CarsScreenState extends State<CarsScreen> {
     required BuildContext context,
     required void Function(DateTime?) onChanged,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           value == null
-              ? '$label: غير محدد'
+              ? '$label: ${l10n.notSet}'
               : '$label: ${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}',
           style: const TextStyle(fontSize: 13),
         ),
@@ -405,7 +435,7 @@ class _CarsScreenState extends State<CarsScreen> {
             );
             if (picked != null) onChanged(picked);
           },
-          child: const Text('تحديد'),
+          child: Text(l10n.chooseDate),
         ),
       ],
     );
@@ -413,89 +443,109 @@ class _CarsScreenState extends State<CarsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('سياراتي'),
-        centerTitle: true,
+        automaticallyImplyLeading: !widget.embedded,
+        title: Text(l10n.myCars),
       ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _cars.length,
-                itemBuilder: (context, index) {
-                  final car = _cars[index];
-                  final isActive = car.id == _activeCarId;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isActive
-                            ? const Color(0xFF1E3A5F)
-                            : Colors.grey.shade200,
-                        width: isActive ? 2 : 1,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: _isLoading
+                ? AppStateView(
+                    icon: Icons.directions_car_outlined,
+                    title: l10n.loadingCars,
+                    loading: true)
+                : _cars.isEmpty
+                    ? AppStateView(
+                        icon: Icons.directions_car_outlined,
+                        title: l10n.addNewCar,
+                        message: l10n.firstCarMessage,
+                        actionLabel: l10n.addNewCar,
+                        onAction: () => _addOrEditCar())
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _cars.length,
+                        itemBuilder: (context, index) {
+                          final car = _cars[index];
+                          final isActive = car.id == _activeCarId;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                              border: Border.all(
+                                color: isActive
+                                    ? AppColors.accent
+                                    : Theme.of(context).dividerColor,
+                                width: isActive ? 2 : 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.midnight
+                                      .withValues(alpha: 0.035),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.accent.withValues(alpha: 0.09),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.directions_car_filled,
+                                    color: AppColors.accent),
+                              ),
+                              title: Text(
+                                  '${l10n.carBrand(car.brand)} ${car.model} (${car.year})',
+                                  style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold)),
+                              subtitle: Text(
+                                  '${car.currentMileage == null ? l10n.mileageNotRecorded : '${car.currentMileage} ${l10n.kmShort}'}${isActive ? '  •  ${l10n.activeVehicle}' : ''}',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: isActive
+                                          ? AppColors.accent
+                                          : AppColors.steel)),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 20, color: AppColors.steel),
+                                    onPressed: () =>
+                                        _addOrEditCar(existing: car),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 20, color: AppColors.steel),
+                                    onPressed: () => _deleteCar(car.id),
+                                  ),
+                                ],
+                              ),
+                              onTap: () => _selectCar(car.id),
+                            ),
+                          );
+                        },
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E3A5F).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.directions_car_filled,
-                          color: const Color(0xFF1E3A5F),
-                        ),
-                      ),
-                      title: Text(
-                        car.label,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: isActive
-                          ? const Text('السيارة النشطة حالياً',
-                              style: TextStyle(
-                                  fontSize: 12, color: Color(0xFF1E3A5F)))
-                          : null,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined,
-                                size: 20, color: Colors.grey),
-                            onPressed: () => _addOrEditCar(existing: car),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline,
-                                size: 20, color: Colors.grey),
-                            onPressed: () => _deleteCar(car.id),
-                          ),
-                        ],
-                      ),
-                      onTap: () => _selectCar(car.id),
-                    ),
-                  );
-                },
-              ),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addOrEditCar(),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('إضافة سيارة', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF1E3A5F),
+        label:
+            Text(l10n.addNewCar, style: const TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.accent,
       ),
     );
   }

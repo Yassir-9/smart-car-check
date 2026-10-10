@@ -1,487 +1,496 @@
-import 'dart:async';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_classic/flutter_blue_classic.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/obd_session_service.dart';
+
+import '../l10n/app_localizations.dart';
 import '../models/car_model.dart';
-import 'dtc_reference_screen.dart';
+import '../models/obd_scan_result.dart';
 import '../services/car_service.dart';
+import '../services/obd/obd_scanner_service.dart';
+import '../services/obd/ble_characteristic_selector.dart';
+import '../services/obd/obd_transport.dart';
+import '../services/obd/obd_transport_factory.dart';
+import '../services/obd_session_service.dart';
+import 'dtc_reference_screen.dart';
 
 class ObdConnectScreen extends StatefulWidget {
   const ObdConnectScreen({super.key});
-
   @override
   State<ObdConnectScreen> createState() => _ObdConnectScreenState();
 }
 
 class _ObdConnectScreenState extends State<ObdConnectScreen> {
-  final FlutterBlueClassic _bluetooth =
-      FlutterBlueClassic(usesFineLocation: true);
-
-  List<BluetoothDevice> _pairedDevices = [];
-  BluetoothConnection? _connection;
-  BluetoothDevice? _connectedDevice;
-  StreamSubscription<Uint8List>? _dataSub;
-  String _buffer = '';
-
-  bool _isScanning = false;
-  bool _isConnecting = false;
-  bool _isReading = false;
-  bool _isClearing = false;
-  String _statusMessage =
-      'اضغط "بحث عن أجهزة" لعرض الأجهزة المقترنة ببلوتوث جهازك';
-  List<String> _dtcCodes = [];
+  final ObdTransportFactory _factory = ObdTransportFactory();
+  ObdScannerService? _scanner;
+  List<ObdTransportType> _transportTypes = const [];
+  ObdTransportType? _selectedTransport;
+  List<ObdDevice> _devices = const [];
+  List<String> _codes = const [];
   CarModel? _activeCar;
+  bool _available = false;
+  bool _scanning = false;
+  bool _connecting = false;
+  bool _reading = false;
+  bool _clearing = false;
+  String _status = '';
+  bool _initialStatusLocalized = false;
 
   @override
   void initState() {
     super.initState();
-    if (ObdSessionService.hasSavedData) {
-      _dtcCodes = List.from(ObdSessionService.lastCodes);
-      _statusMessage =
-          'نتيجة آخر فحص محفوظة (${_dtcCodes.length} كود) — أعد الاتصال للفحص من جديد';
+    final saved = ObdSessionService.lastResult;
+    if (saved != null) {
+      _codes = List<String>.from(saved.codes);
     }
-    _loadActiveCar();
+    _initialize();
   }
 
-  Future<void> _loadActiveCar() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialStatusLocalized) return;
+    final l10n = AppLocalizations.of(context);
+    _status = ObdSessionService.lastResult == null
+        ? l10n.checkingObdCapability
+        : l10n.savedObdScan(_codes.length);
+    _initialStatusLocalized = true;
+  }
+
+  Future<void> _initialize() async {
+    await Future.wait<void>([_loadCar(), _loadCapability()]);
+  }
+
+  Future<void> _loadCar() async {
     try {
       final cars = await CarService.loadCars();
       final activeId = await CarService.getActiveCarId();
       if (cars.isNotEmpty) {
         _activeCar = cars.firstWhere(
-          (c) => c.id == activeId,
+          (car) => car.id == activeId,
           orElse: () => cars.first,
         );
       }
-    } catch (e) {
+    } catch (_) {
       _activeCar = null;
     }
   }
 
+  Future<void> _loadCapability() async {
+    final l10n = AppLocalizations.of(context);
+    final capabilities = await _factory.detectCapabilities();
+    final types = _factory.availableTypes(capabilities);
+    final preferred = types.contains(ObdTransportType.androidClassic)
+        ? ObdTransportType.androidClassic
+        : (types.isEmpty ? null : types.first);
+    if (preferred != null) await _selectTransport(preferred, updateUi: false);
+    if (!mounted) return;
+    setState(() {
+      _transportTypes = types;
+      _available = types.isNotEmpty;
+      if (types.isEmpty) {
+        _status = l10n.obdDirectUnavailable;
+      } else if (!ObdSessionService.hasSavedData) {
+        _status = l10n.findPairedObd;
+      }
+    });
+  }
+
   @override
   void dispose() {
-    _dataSub?.cancel();
-    _connection?.dispose();
+    _scanner?.dispose();
     super.dispose();
   }
 
-  Future<void> _scanPairedDevices() async {
+  Future<void> _selectTransport(ObdTransportType type,
+      {bool updateUi = true}) async {
+    final l10n = AppLocalizations.of(context);
+    await _scanner?.dispose();
+    _scanner = ObdScannerService(transport: _factory.create(type));
+    _selectedTransport = type;
+    _devices = const [];
+    if (updateUi && mounted) {
+      setState(() {
+        _status = type == ObdTransportType.ble
+            ? l10n.findNearbyObd
+            : l10n.findPairedObd;
+      });
+    }
+  }
+
+  Future<void> _discover() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
-      _isScanning = true;
-      _statusMessage = 'جاري البحث...';
+      _scanning = true;
+      _status = l10n.searching;
     });
     try {
-      final devices = await _bluetooth.bondedDevices ?? [];
+      final devices = await _scanner!.discoverDevices();
+      if (!mounted) return;
       setState(() {
-        _pairedDevices = devices;
-        _statusMessage = devices.isEmpty
-            ? 'ما لقينا أجهزة مقترنة. أول قرن جهاز OBD من إعدادات البلوتوث بجوالك، ثم أعد المحاولة.'
-            : 'اختر جهاز OBD من القائمة (اسمه عادة يحتوي OBD أو ELM)';
+        _devices = devices;
+        _status = devices.isEmpty
+            ? (_selectedTransport == ObdTransportType.ble
+                ? l10n.noNearbyObd
+                : l10n.noPairedObd)
+            : l10n.chooseObdDevice;
       });
-    } catch (e) {
-      setState(() => _statusMessage = 'تعذر البحث عن الأجهزة: $e');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _status = l10n.obdSearchFailed);
+      }
     } finally {
-      setState(() => _isScanning = false);
+      if (mounted) setState(() => _scanning = false);
     }
   }
 
-  void _onDataReceived(Uint8List data) {
-    _buffer += String.fromCharCodes(data);
-  }
-
-  Future<void> _connectTo(BluetoothDevice device) async {
+  Future<void> _connect(ObdDevice device) async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
-      _isConnecting = true;
-      _statusMessage = 'جاري الاتصال بـ ${device.name}...';
+      _connecting = true;
+      _status = l10n.connectingToDevice(device.name);
     });
     try {
-      final connection = await _bluetooth.connect(device.address);
-      if (connection == null || !connection.isConnected) {
-        throw Exception('فشل الاتصال بالجهاز');
+      await _scanner!.connect(device);
+      if (mounted)
+        setState(() => _status = l10n.connectedToDevice(device.name));
+    } on BleCharacteristicSelectionException catch (error) {
+      if (mounted) setState(() => _status = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _status = l10n.obdConnectionFailed);
       }
-      _connection = connection;
-      _buffer = '';
-      _dataSub = connection.input?.listen(_onDataReceived);
-
-      connection.writeString('ATZ\r');
-      await Future.delayed(const Duration(milliseconds: 800));
-      connection.writeString('ATE0\r');
-      await Future.delayed(const Duration(milliseconds: 400));
-
-      setState(() {
-        _connectedDevice = device;
-        _statusMessage = '✅ متصل بجهاز ${device.name}';
-      });
-    } catch (e) {
-      setState(() => _statusMessage = 'فشل الاتصال: $e');
     } finally {
-      setState(() => _isConnecting = false);
+      if (mounted) setState(() => _connecting = false);
     }
   }
 
-  List<String> _parseDtcResponse(String raw) {
-    final cleaned = raw.replaceAll(RegExp(r'[\r\n>]'), ' ').trim();
-    final bytes = cleaned
-        .split(RegExp(r'\s+'))
-        .where((b) => RegExp(r'^[0-9A-Fa-f]{2}$').hasMatch(b))
-        .map((b) => int.parse(b, radix: 16))
-        .toList();
-
-    final startIndex = bytes.indexOf(0x43);
-    if (startIndex == -1) return [];
-
-    final dataBytes = bytes.sublist(startIndex + 1);
-    const letters = ['P', 'C', 'B', 'U'];
-    final codes = <String>[];
-    for (int i = 0; i + 1 < dataBytes.length; i += 2) {
-      final b1 = dataBytes[i];
-      final b2 = dataBytes[i + 1];
-      if (b1 == 0 && b2 == 0) continue;
-      final letter = letters[(b1 >> 6) & 0x03];
-      final digit2 = (b1 >> 4) & 0x03;
-      final digit3 = (b1 & 0x0F).toRadixString(16).toUpperCase();
-      final digit4 = ((b2 >> 4) & 0x0F).toRadixString(16).toUpperCase();
-      final digit5 = (b2 & 0x0F).toRadixString(16).toUpperCase();
-      codes.add('$letter$digit2$digit3$digit4$digit5');
-    }
-    return codes;
-  }
-
-Future<Map<String, dynamic>> _readDtcForHeader(String header) async {
-    Map<String, dynamic> result = {'codes': <String>[], 'reachable': true, 'ambiguous': true};
-
-    for (int attempt = 0; attempt < 2; attempt++) {
-      _buffer = '';
-      _connection?.writeString('ATSH$header\r');
-      await Future.delayed(const Duration(milliseconds: 600));
-      _buffer = '';
-      _connection?.writeString('03\r');
-      await Future.delayed(const Duration(milliseconds: 3000));
-      final raw = _buffer;
-      final upper = raw.toUpperCase();
-      final codes = _parseDtcResponse(raw);
-      final unableToConnect = upper.contains('UNABLE TO CONNECT');
-      final confirmedEmpty = upper.contains('NO DATA');
-      final ambiguous = codes.isEmpty && !unableToConnect && !confirmedEmpty && raw.trim().length < 6;
-
-      result = {
-        'codes': codes,
-        'reachable': !unableToConnect,
-        'ambiguous': ambiguous,
-      };
-
-      if (!ambiguous) break;
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-
-    return result;
-  }
-
-  Future<void> _readDtcCodes() async {
+  Future<void> _scan() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
-      _isReading = true;
-      _statusMessage = 'جاري قراءة أكواد المحرك...';
-      _buffer = '';
+      _reading = true;
+      _status = l10n.readingEngineTransmissionCodes;
     });
     try {
-      final engineResult = await _readDtcForHeader('7E0');
-      final engineAmbiguous = engineResult['ambiguous'] as bool;
-
-      if (engineAmbiguous) {
-        setState(() {
-          _statusMessage = 'تعذر إتمام الفحص (اتصال غير مستقر) — النتيجة السابقة محفوظة، أعد المحاولة';
-        });
-        return;
-      }
-
-      final engineCodes = List<String>.from(engineResult['codes']);
-
-      setState(() => _statusMessage = 'جاري قراءة أكواد ناقل الحركة (القير)...');
-      List<String> transmissionCodes = [];
-      bool transmissionReachable = true;
-      try {
-        final transResult = await _readDtcForHeader('7E1');
-        transmissionCodes = List<String>.from(transResult['codes']);
-        transmissionReachable = transResult['reachable'] as bool;
-      } catch (_) {
-        transmissionCodes = [];
-        transmissionReachable = false;
-      }
-
-      _connection?.writeString('ATSH7DF\r');
-      await Future.delayed(const Duration(milliseconds: 400));
-
-      final combined = <String>{...engineCodes, ...transmissionCodes}.toList();
-      final transNote = !transmissionReachable
-          ? ' (وحدة القير غير متاحة على هذا الجهاز/السيارة)'
-          : '';
+      final summary = await _scanner!.scan(vehicleId: _activeCar?.id);
+      ObdSessionService.save(summary.result);
+      final note = summary.transmissionReachable
+          ? ''
+          : ' (${l10n.transmissionModuleUnavailable})';
+      if (!mounted) return;
       setState(() {
-        _dtcCodes = combined;
-        _statusMessage = combined.isEmpty
-            ? 'ما فيه أكواد أعطال محفوظة حاليًا ✅ (محرك وقير)$transNote'
-            : 'تم العثور على ${combined.length} كود (محرك: ${engineCodes.length}، قير: ${transmissionCodes.length})$transNote';
+        _codes = summary.result.codes;
+        _status = _codes.isEmpty
+            ? '${l10n.noStoredFaultCodes}$note'
+            : '${l10n.faultCodesFound(_codes.length, summary.engineCodeCount, summary.transmissionCodeCount)}$note';
       });
-      ObdSessionService.save(combined, _connectedDevice?.name);
-    } catch (e) {
-      setState(() => _statusMessage = 'خطأ بقراءة الأكواد: $e');
+    } catch (error) {
+      if (mounted) setState(() => _status = error.toString());
     } finally {
-      setState(() => _isReading = false);
+      if (mounted) setState(() => _reading = false);
     }
   }
-  Future<void> _clearDtcCodes() async {
+
+  Future<void> _clear() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('تأكيد المسح'),
-        content: const Text(
-            'هل أنت متأكد من مسح جميع أكواد الأعطال المحفوظة؟ لا يمكن التراجع عن هذا الإجراء.'),
+        title: Text(l10n.clearCodesTitle),
+        content: Text(l10n.clearCodesConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('نعم، امسح'),
+            child: Text(l10n.confirmClear),
           ),
         ],
       ),
     );
     if (confirmed != true) return;
-
     setState(() {
-      _isClearing = true;
-      _statusMessage = 'جاري مسح الأكواد...';
-      _buffer = '';
+      _clearing = true;
+      _status = l10n.clearingCodes;
     });
     try {
-      _connection?.writeString('ATSH7DF\r');
-      await Future.delayed(const Duration(milliseconds: 300));
-      _connection?.writeString('04\r');
-      await Future.delayed(const Duration(seconds: 1));
-      setState(() {
-        _dtcCodes = [];
-        _statusMessage = '✅ تم مسح جميع أكواد الأعطال بنجاح';
-      });
+      await _scanner!.clearCodes();
       ObdSessionService.clear();
-    } catch (e) {
-      setState(() => _statusMessage = 'خطأ بمسح الأكواد: $e');
+      if (mounted) {
+        setState(() {
+          _codes = const [];
+          _status = l10n.codesCleared;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _status = l10n.clearCodesFailed);
     } finally {
-      setState(() => _isClearing = false);
+      if (mounted) setState(() => _clearing = false);
     }
   }
 
   Future<void> _disconnect() async {
-    await _dataSub?.cancel();
-    _connection?.dispose();
-    setState(() {
-      _connection = null;
-      _connectedDevice = null;
-      _dtcCodes = [];
-      _statusMessage = 'تم قطع الاتصال';
-    });
+    final l10n = AppLocalizations.of(context);
+    await _scanner!.disconnect();
+    if (!mounted) return;
+    setState(() =>
+        _status = _codes.isEmpty ? l10n.disconnected : l10n.disconnectedSaved);
   }
 
-  Future<void> _openFreeSearch(String code) async {
-    final brand = _activeCar?.brand ?? '';
-    final model = _activeCar?.model ?? '';
-    final year = _activeCar?.year.toString() ?? '';
-    final query = Uri.encodeComponent('$brand $model $year قطعة غيار كود عطل $code'.trim());
+  Future<void> _searchParts(String code) async {
+    final l10n = AppLocalizations.of(context);
+    final query = Uri.encodeComponent(
+      '${_activeCar?.brand ?? ''} ${_activeCar?.model ?? ''} ${_activeCar?.year ?? ''} قطعة غيار كود عطل $code'
+          .trim(),
+    );
     final uri = Uri.parse('https://www.google.com/search?q=$query&tbm=shop');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر فتح رابط البحث')),
+        SnackBar(content: Text(l10n.searchLinkFailed)),
       );
     }
   }
 
+  Future<void> _copyObdTranscript() async {
+    final entries =
+        _scanner?.protocol.transcript ?? const <Map<String, dynamic>>[];
+    final text = entries
+        .map((entry) => [
+              '[${entry['timestamp'] ?? ''}]',
+              'HEADER: ${entry['requestHeader'] ?? ''}',
+              'COMMAND: ${entry['command'] ?? ''}',
+              'RAW: ${entry['raw'] ?? ''}',
+              'RESPONDERS: ${entry['responders'] ?? entry['detectedResponders'] ?? ''}',
+              'PARSED: ${entry['codes'] ?? ''}',
+            ].join('\n'))
+        .join('\n\n');
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted)
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context).obdTranscriptCopied)));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final connected = _scanner?.connectedDevice;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ربط جهاز OBD-II'),
+        title: Text(l10n.obdConnectTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.menu_book_outlined),
-            tooltip: 'دليل أكواد الأعطال',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const DtcReferenceScreen()),
-              );
-            },
+            tooltip: l10n.dtcGuide,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => const DtcReferenceScreen(),
+              ),
+            ),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFC9A876).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFC9A876).withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.info_outline, color: Color(0xFF1E3A5F)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(_statusMessage,
-                        style: const TextStyle(fontSize: 13)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (_connectedDevice == null) ...[
+            _statusCard(),
+            const SizedBox(height: 16),
+            if (_transportTypes.length > 1 && connected == null) ...[
+              Text(l10n.chooseConnectionMethod,
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              ..._transportTypes.map(_transportCard),
+              const SizedBox(height: 8),
+            ],
+            if (!_available)
+              _unavailableCard()
+            else if (connected == null) ...[
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _isScanning ? null : _scanPairedDevices,
-                  icon: _isScanning
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                  onPressed: _scanning ? null : _discover,
+                  icon: _scanning
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.bluetooth_searching),
-                  label: const Text('بحث عن أجهزة مقترنة'),
+                  label: Text(_selectedTransport == ObdTransportType.ble
+                      ? l10n.searchNearbyDevices
+                      : l10n.showPairedDevices),
                 ),
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _pairedDevices.isEmpty
-                    ? const SizedBox.shrink()
-                    : ListView.builder(
-                        itemCount: _pairedDevices.length,
-                        itemBuilder: (context, index) {
-                          final d = _pairedDevices[index];
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-                            ),
-                            child: ListTile(
-                              leading: const Icon(Icons.bluetooth),
-                              title: Text(d.name ?? 'جهاز غير معروف'),
-                              subtitle: Text(d.address),
-                              trailing: _isConnecting
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2))
-                                  : const Icon(Icons.chevron_left),
-                              onTap:
-                                  _isConnecting ? null : () => _connectTo(d),
-                            ),
-                          );
-                        },
-                      ),
-              ),
+              const SizedBox(height: 12),
+              ..._devices.map(_deviceCard),
             ] else ...[
               Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-                ),
                 child: ListTile(
-                  leading: const Icon(Icons.bluetooth_connected,
-                      color: Colors.green),
-                  title: Text(_connectedDevice!.name ?? 'جهاز OBD'),
-                  subtitle: const Text('متصل'),
+                  leading: const Icon(
+                    Icons.bluetooth_connected,
+                    color: Colors.green,
+                  ),
+                  title: Text(connected.name),
+                  subtitle: Text(l10n.connected),
                   trailing: TextButton(
                     onPressed: _disconnect,
-                    child: const Text('قطع الاتصال'),
+                    child: Text(l10n.disconnect),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _isReading ? null : _readDtcCodes,
-                      icon: _isReading
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.search),
-                      label: const Text('قراءة الأكواد'),
-                    ),
+                  OutlinedButton.icon(
+                    onPressed: _reading ? null : _scan,
+                    icon: _reading
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.search),
+                    label: Text(l10n.readCodes),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _isClearing ? null : _clearDtcCodes,
-                      style:
-                          OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                      icon: _isClearing
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.delete_outline),
-                      label: const Text('مسح الأكواد'),
-                    ),
+                  OutlinedButton.icon(
+                    onPressed: _clearing ? null : _clear,
+                    icon: _clearing
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.delete_outline),
+                    label: Text(l10n.clearCodes),
                   ),
                 ],
               ),
             ],
-          const SizedBox(height: 16),
-          if (_dtcCodes.isNotEmpty)
-            Expanded(
-              child: ListView.builder(
-                itemCount: _dtcCodes.length,
-                itemBuilder: (context, index) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-                  ),
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFC9A876).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.warning_amber_rounded,
-                          color: Color(0xFFC9A876), size: 18),
-                    ),
-                    title: Text(
-                      _dtcCodes[index],
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace'),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.search, color: Color(0xFF1E3A5F)),
-                      tooltip: 'ابحث عن القطعة المطلوبة',
-                      onPressed: () => _openFreeSearch(_dtcCodes[index]),
-                    ),
-                  ),
+            if (_codes.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.psychology_outlined),
+                  label: Text(l10n.diagnoseWithCodes(_codes.length)),
                 ),
               ),
-            ),
-        ],
+              const SizedBox(height: 12),
+              ..._codes.map(_codeCard),
+            ],
+            if (kDebugMode && _scanner != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _copyObdTranscript,
+                icon: const Icon(Icons.copy_all_outlined),
+                label: Text(l10n.copyObdTranscript),
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
+
+  Widget _statusCard() => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFC9A876).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline),
+            const SizedBox(width: 10),
+            Expanded(child: Text(_status)),
+          ],
+        ),
+      );
+
+  Widget _unavailableCard() => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.bluetooth_disabled_outlined),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                    AppLocalizations.of(context).obdUnavailableAlternative),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _deviceCard(ObdDevice device) => Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          leading: const Icon(Icons.bluetooth),
+          title: Text(device.name),
+          subtitle: Text(_selectedTransport == ObdTransportType.ble
+              ? AppLocalizations.of(context).nearbyDevice
+              : AppLocalizations.of(context).pairedDevice),
+          trailing: _connecting
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.chevron_left),
+          onTap: _connecting ? null : () => _connect(device),
+        ),
+      );
+
+  Widget _transportCard(ObdTransportType type) {
+    final selected = _selectedTransport == type;
+    final ble = type == ObdTransportType.ble;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      color: selected
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Theme.of(context).cardColor,
+      child: ListTile(
+        minVerticalPadding: 12,
+        leading: Icon(ble ? Icons.bluetooth_searching : Icons.bluetooth),
+        title: Text(ble
+            ? 'Bluetooth LE'
+            : AppLocalizations.of(context).classicBluetooth),
+        subtitle: Text(ble
+            ? AppLocalizations.of(context).bleDescription
+            : AppLocalizations.of(context).classicBluetoothDescription),
+        trailing: Icon(selected
+            ? Icons.check_circle_rounded
+            : Icons.radio_button_unchecked_rounded),
+        onTap: selected ? null : () => _selectTransport(type),
+      ),
+    );
+  }
+
+  Widget _codeCard(String code) => Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          leading: const Icon(Icons.warning_amber_rounded),
+          title: Text(
+            code,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+            ),
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: AppLocalizations.of(context).findRequiredPart,
+            onPressed: () => _searchParts(code),
+          ),
+        ),
+      );
 }

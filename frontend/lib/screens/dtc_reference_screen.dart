@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/app_localizations.dart';
 
 class DtcReferenceScreen extends StatefulWidget {
   const DtcReferenceScreen({super.key});
@@ -31,7 +32,7 @@ class _DtcReferenceScreenState extends State<DtcReferenceScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorText = 'تعذر تحميل دليل الأكواد';
+        _errorText = 'load_failed';
         _isLoading = false;
       });
     }
@@ -60,8 +61,9 @@ class _DtcReferenceScreenState extends State<DtcReferenceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('دليل أكواد الأعطال')),
+      appBar: AppBar(title: Text(l10n.dtcGuide)),
       body: Column(
         children: [
           Padding(
@@ -70,7 +72,7 @@ class _DtcReferenceScreenState extends State<DtcReferenceScreen> {
               controller: _searchController,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                hintText: 'ابحث بالكود (مثال: P0301) أو بالوصف',
+                hintText: l10n.dtcSearchHint,
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 border: OutlineInputBorder(
@@ -85,7 +87,7 @@ class _DtcReferenceScreenState extends State<DtcReferenceScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerRight,
-                child: Text('${_filteredCodes.length} من ${_codes.length} كود',
+                child: Text(l10n.dtcCount(_filteredCodes.length, _codes.length),
                     style: const TextStyle(fontSize: 12, color: Colors.grey)),
               ),
             ),
@@ -94,9 +96,9 @@ class _DtcReferenceScreenState extends State<DtcReferenceScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _errorText != null
-                    ? Center(child: Text(_errorText!))
+                    ? Center(child: Text(l10n.dtcLoadFailed))
                     : _filteredCodes.isEmpty
-                        ? const Center(child: Text('ما فيه نتائج مطابقة'))
+                        ? Center(child: Text(l10n.noMatchingResults))
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             itemCount: _filteredCodes.length,
@@ -135,14 +137,15 @@ class _DtcReferenceScreenState extends State<DtcReferenceScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            const Text('الأسباب الشائعة:',
-                                                style: TextStyle(
+                                            Text(l10n.commonCauses,
+                                                style: const TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 12)),
                                             const SizedBox(height: 6),
                                             ...causes.map((c) => Padding(
-                                                  padding: const EdgeInsets
-                                                      .only(bottom: 4),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          bottom: 4),
                                                   child: Text('•  $c',
                                                       style: const TextStyle(
                                                           fontSize: 12)),
