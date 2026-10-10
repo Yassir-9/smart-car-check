@@ -20,8 +20,13 @@ class AuthService {
 
   static Future<String?> signUp(String email, String password) async {
     try {
-      await _auth.createUserWithEmailAndPassword(
+      final credential = await _auth.createUserWithEmailAndPassword(
           email: email, password: password);
+      final user = credential.user;
+      if (user == null) {
+        return 'تعذر إنشاء الحساب. حاول مرة أخرى.';
+      }
+      await user.sendEmailVerification();
       return null;
     } on FirebaseAuthException catch (e) {
       return _mapError(e.code);

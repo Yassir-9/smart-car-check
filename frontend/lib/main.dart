@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen.dart';
+import 'screens/email_verification_screen.dart';
 import 'screens/app_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'theme/app_design_system.dart';
@@ -75,7 +76,7 @@ class _CarAiAppState extends State<CarAiApp> {
       },
       home: StreamBuilder<User?>(
         stream:
-            widget.authStateChanges ?? FirebaseAuth.instance.authStateChanges(),
+            widget.authStateChanges ?? FirebaseAuth.instance.userChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
@@ -83,6 +84,21 @@ class _CarAiAppState extends State<CarAiApp> {
             );
           }
           if (snapshot.hasData) {
+            final user = snapshot.data!;
+            final hasPhoneProvider = user.providerData.any(
+              (provider) => provider.providerId == 'phone',
+            );
+
+            final needsEmailVerification =
+                user.email != null &&
+                user.email!.isNotEmpty &&
+                !user.emailVerified &&
+                !hasPhoneProvider;
+
+            if (needsEmailVerification) {
+              return const EmailVerificationScreen();
+            }
+
             return const OnboardingGate(child: AppShell());
           }
           return const AuthScreen();
