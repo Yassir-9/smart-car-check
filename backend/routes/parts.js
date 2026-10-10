@@ -19,5 +19,5 @@ module.exports = createPartsRouter({
   contactIpDailyLimiter,
   localizedError,
   logger,
-  exposePublicContact: true,
+  exposePublicContact: false,
 });
