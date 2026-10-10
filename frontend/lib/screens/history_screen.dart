@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_design_system.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -19,9 +20,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = true;
   String? _errorText;
   List<dynamic> _items = [];
-  String _selectedFilter = 'الكل';
+  String _selectedFilter = 'all';
 
-  static const List<String> _filters = ['الكل', 'عالية', 'متوسطة', 'منخفضة'];
+  static const List<String> _filters = ['all', 'high', 'medium', 'low'];
 
   @override
   void initState() {
@@ -44,46 +45,58 @@ class _HistoryScreenState extends State<HistoryScreen> {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() => _items = data is List ? data : (data['items'] ?? []));
       } else {
-        setState(() => _errorText = 'خطأ من السيرفر: ${response.statusCode}');
+        setState(() => _errorText = 'server:${response.statusCode}');
       }
     } catch (e) {
-      setState(() => _errorText = 'تعذر الاتصال بالسيرفر');
+      setState(() => _errorText = 'connection');
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   List<dynamic> get _filteredItems {
-    if (_selectedFilter == 'الكل') return _items;
+    if (_selectedFilter == 'all') return _items;
     return _items.where((item) {
       final result = (item['result'] as Map?) ?? {};
-      return _severityAr(result['severity']?.toString()) == _selectedFilter;
+      return _severityKey(result['severity']?.toString()) == _selectedFilter;
     }).toList();
   }
 
-  String _severityAr(String? severity) => switch (severity) {
-        'critical' || 'high' => 'عالية',
-        'medium' => 'متوسطة',
-        'low' => 'منخفضة',
-        _ => severity ?? 'غير محددة',
+  String _severityKey(String? severity) => switch (severity) {
+        'critical' || 'high' => 'high',
+        'medium' => 'medium',
+        'low' => 'low',
+        _ => 'unknown',
       };
 
+  String _severityLabel(String severity) {
+    final l10n = AppLocalizations.of(context);
+    return switch (severity) {
+      'all' => l10n.historyFilterAll,
+      'high' => l10n.severityHigh,
+      'medium' => l10n.severityMedium,
+      'low' => l10n.severityLow,
+      _ => l10n.historyUnknownSeverity,
+    };
+  }
+
   Future<void> _deleteItem(String id) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('حذف التشخيص'),
-        content: const Text('هل تريد حذف هذا التشخيص من السجل؟'),
+        title: Text(l10n.historyDeleteTitle),
+        content: Text(l10n.historyDeleteConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -100,10 +113,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (response.statusCode == 200 || response.statusCode == 204) {
         setState(() => _items.removeWhere((e) => e['id'].toString() == id));
       } else {
-        _showSnack('تعذر حذف العنصر');
+        _showSnack(l10n.historyDeleteFailed);
       }
     } catch (e) {
-      _showSnack('تعذر الاتصال بالسيرفر');
+      _showSnack(l10n.historyConnectionFailed);
     }
   }
 
@@ -115,11 +128,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Color _severityColor(String? severity) {
     switch (severity) {
-      case 'عالية':
+      case 'high':
         return AppColors.danger;
-      case 'متوسطة':
+      case 'medium':
         return AppColors.warning;
-      case 'منخفضة':
+      case 'low':
         return AppColors.success;
       default:
         return AppColors.unknown;
@@ -128,11 +141,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   IconData _severityIcon(String? severity) {
     switch (severity) {
-      case 'عالية':
+      case 'high':
         return Icons.dangerous_outlined;
-      case 'متوسطة':
+      case 'medium':
         return Icons.warning_amber_rounded;
-      case 'منخفضة':
+      case 'low':
         return Icons.check_circle_outline;
       default:
         return Icons.help_outline;
@@ -143,32 +156,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (isoDate == null) return '';
     try {
       final date = DateTime.parse(isoDate).toLocal();
-      final months = [
-        'يناير',
-        'فبراير',
-        'مارس',
-        'أبريل',
-        'مايو',
-        'يونيو',
-        'يوليو',
-        'أغسطس',
-        'سبتمبر',
-        'أكتوبر',
-        'نوفمبر',
-        'ديسمبر'
-      ];
-      final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
-      final period = date.hour >= 12 ? 'م' : 'ص';
-      final minute = date.minute.toString().padLeft(2, '0');
-      return '${date.day} ${months[date.month - 1]} ${date.year} - $hour:$minute $period';
-    } catch (e) {
+      final localizations = MaterialLocalizations.of(context);
+      final formattedDate = localizations.formatMediumDate(date);
+      final formattedTime = localizations.formatTimeOfDay(
+        TimeOfDay.fromDateTime(date),
+        alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
+      );
+      return '$formattedDate - $formattedTime';
+    } catch (_) {
       return isoDate;
     }
   }
 
   void _showDetails(Map item) {
+    final l10n = AppLocalizations.of(context);
     final result = (item['result'] as Map?) ?? {};
-    final severity = _severityAr(result['severity']?.toString());
+    final severity = _severityKey(result['severity']?.toString());
     final color = _severityColor(severity);
 
     showModalBottomSheet(
@@ -211,7 +214,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('الخطورة: $severity',
+                  child: Text('${l10n.historySeverityLabel}: ${_severityLabel(severity)}',
                       style: TextStyle(
                           color: color,
                           fontSize: 12,
@@ -222,9 +225,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     style: const TextStyle(fontSize: 14, height: 1.6)),
                 if (result['recommendations'] != null) ...[
                   const SizedBox(height: 12),
-                  const Text('التوصيات:',
+                  Text(l10n.historyRecommendationsLabel,
                       style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                           const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 6),
                   ...List<String>.from(result['recommendations']).map(
                     (r) => Padding(
@@ -254,7 +257,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                            'التكلفة التقديرية: ${result['estimated_cost']}',
+                            '${l10n.historyEstimatedCostLabel}: ${result['estimated_cost']}',
                             style: const TextStyle(
                                 fontSize: 13, color: AppColors.steel)),
                       ),
@@ -282,9 +285,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           final filter = _filters[index];
           final isSelected = filter == _selectedFilter;
           final color =
-              filter == 'الكل' ? AppColors.accent : _severityColor(filter);
+              filter == 'all' ? AppColors.accent : _severityColor(filter);
           return ChoiceChip(
-            label: Text(filter),
+            label: Text(_severityLabel(filter)),
             selected: isSelected,
             onSelected: (_) => setState(() => _selectedFilter = filter),
             selectedColor: color.withValues(alpha: 0.15),
@@ -304,6 +307,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildEmptyState() {
+    final l10n = AppLocalizations.of(context);
     final noneAtAll = _items.isEmpty;
     return Center(
       child: Padding(
@@ -326,8 +330,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             const SizedBox(height: 16),
             Text(
               noneAtAll
-                  ? 'لا يوجد أي تشخيصات محفوظة بعد'
-                  : 'لا يوجد تشخيصات بخطورة "$_selectedFilter"',
+                  ? l10n.historyEmpty
+                  : '${l10n.historyNoFiltered} "${_severityLabel(_selectedFilter)}"',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 13, color: AppColors.muted),
             ),
@@ -338,8 +342,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildItemCard(Map item) {
+    final l10n = AppLocalizations.of(context);
     final result = (item['result'] as Map?) ?? {};
-    final severity = _severityAr(result['severity']?.toString());
+    final severity = _severityKey(result['severity']?.toString());
     final color = _severityColor(severity);
     final id = item['id'].toString();
     final car = (item['car'] as Map?) ?? {};
@@ -374,7 +379,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    result['possible_issue'] ?? 'تشخيص بدون عنوان',
+                    result['possible_issue'] ?? l10n.historyUntitled,
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.bold),
                     maxLines: 1,
@@ -408,12 +413,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final filtered = _filteredItems;
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: !widget.embedded,
-        title: const Text('سجل التشخيصات'),
+        title: Text(AppLocalizations.of(context).historyPageTitle),
       ),
       body: SafeArea(
         child: Center(
@@ -430,9 +436,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   child: RefreshIndicator(
                     onRefresh: _loadHistory,
                     child: _isLoading
-                        ? const AppStateView(
+                        ? AppStateView(
                             icon: Icons.history_rounded,
-                            title: 'جاري تحميل سجل السيارة',
+                            title: AppLocalizations.of(context).historyLoading,
                             loading: true)
                         : _errorText != null
                             ? ListView(
@@ -444,9 +450,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         padding: const EdgeInsets.all(24),
                                         child: AppStateView(
                                           icon: Icons.cloud_off_outlined,
-                                          title: 'تعذر تحميل السجل',
-                                          message: _errorText!,
-                                          actionLabel: 'إعادة المحاولة',
+                                          title: l10n.historyLoadFailed,
+                                          message: _errorText!.startsWith('server:') ? '${l10n.historyLoadFailed} (${_errorText!.substring(7)})' : l10n.historyConnectionFailed,
+                                          actionLabel: l10n.historyRetry,
                                           onAction: _loadHistory,
                                         ),
                                       ),

@@ -602,5 +602,21 @@
   "contactSignInRequired": "Sign in to contact the seller",
   "sellerContactUnavailable": "Seller contact information is unavailable",
   "sellerContactRateLimited": "Too many contact requests. Try again later.",
-  "sellerContactFailed": "Could not retrieve seller contact information"
+  "sellerContactFailed": "Could not retrieve seller contact information",
+  "historyPageTitle": "Diagnosis History",
+  "historyLoading": "Loading vehicle history",
+  "historyFilterAll": "All",
+  "historyDeleteTitle": "Delete Diagnosis",
+  "historyDeleteConfirm": "Do you want to delete this diagnosis from your history?",
+  "historyDeleteFailed": "Could not delete the diagnosis",
+  "historyConnectionFailed": "Could not connect to the server",
+  "historyUnknownSeverity": "Unknown",
+  "historySeverityLabel": "Severity",
+  "historyRecommendationsLabel": "Recommendations",
+  "historyEstimatedCostLabel": "Estimated Cost",
+  "historyEmpty": "No saved diagnoses yet",
+  "historyNoFiltered": "No diagnoses with severity",
+  "historyUntitled": "Untitled Diagnosis",
+  "historyLoadFailed": "Could Not Load History",
+  "historyRetry": "Retry"
 }

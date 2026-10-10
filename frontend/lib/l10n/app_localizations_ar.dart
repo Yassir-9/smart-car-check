@@ -1831,4 +1831,52 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get sellerContactFailed => 'تعذّر جلب بيانات تواصل البائع';
+
+  @override
+  String get historyPageTitle => 'سجل التشخيصات';
+
+  @override
+  String get historyLoading => 'جاري تحميل سجل السيارة';
+
+  @override
+  String get historyFilterAll => 'الكل';
+
+  @override
+  String get historyDeleteTitle => 'حذف التشخيص';
+
+  @override
+  String get historyDeleteConfirm => 'هل تريد حذف هذا التشخيص من السجل؟';
+
+  @override
+  String get historyDeleteFailed => 'تعذر حذف العنصر';
+
+  @override
+  String get historyConnectionFailed => 'تعذر الاتصال بالسيرفر';
+
+  @override
+  String get historyUnknownSeverity => 'غير محددة';
+
+  @override
+  String get historySeverityLabel => 'الخطورة';
+
+  @override
+  String get historyRecommendationsLabel => 'التوصيات';
+
+  @override
+  String get historyEstimatedCostLabel => 'التكلفة التقديرية';
+
+  @override
+  String get historyEmpty => 'لا يوجد أي تشخيصات محفوظة بعد';
+
+  @override
+  String get historyNoFiltered => 'لا توجد تشخيصات بمستوى خطورة';
+
+  @override
+  String get historyUntitled => 'تشخيص بدون عنوان';
+
+  @override
+  String get historyLoadFailed => 'تعذر تحميل السجل';
+
+  @override
+  String get historyRetry => 'إعادة المحاولة';
 }

@@ -1862,4 +1862,53 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sellerContactFailed =>
       'Could not retrieve seller contact information';
+
+  @override
+  String get historyPageTitle => 'Diagnosis History';
+
+  @override
+  String get historyLoading => 'Loading vehicle history';
+
+  @override
+  String get historyFilterAll => 'All';
+
+  @override
+  String get historyDeleteTitle => 'Delete Diagnosis';
+
+  @override
+  String get historyDeleteConfirm =>
+      'Do you want to delete this diagnosis from your history?';
+
+  @override
+  String get historyDeleteFailed => 'Could not delete the diagnosis';
+
+  @override
+  String get historyConnectionFailed => 'Could not connect to the server';
+
+  @override
+  String get historyUnknownSeverity => 'Unknown';
+
+  @override
+  String get historySeverityLabel => 'Severity';
+
+  @override
+  String get historyRecommendationsLabel => 'Recommendations';
+
+  @override
+  String get historyEstimatedCostLabel => 'Estimated Cost';
+
+  @override
+  String get historyEmpty => 'No saved diagnoses yet';
+
+  @override
+  String get historyNoFiltered => 'No diagnoses with severity';
+
+  @override
+  String get historyUntitled => 'Untitled Diagnosis';
+
+  @override
+  String get historyLoadFailed => 'Could Not Load History';
+
+  @override
+  String get historyRetry => 'Retry';
 }

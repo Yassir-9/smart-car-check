@@ -3518,6 +3518,102 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تعذّر جلب بيانات تواصل البائع'**
   String get sellerContactFailed;
+
+  /// No description provided for @historyPageTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'سجل التشخيصات'**
+  String get historyPageTitle;
+
+  /// No description provided for @historyLoading.
+  ///
+  /// In ar, this message translates to:
+  /// **'جاري تحميل سجل السيارة'**
+  String get historyLoading;
+
+  /// No description provided for @historyFilterAll.
+  ///
+  /// In ar, this message translates to:
+  /// **'الكل'**
+  String get historyFilterAll;
+
+  /// No description provided for @historyDeleteTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف التشخيص'**
+  String get historyDeleteTitle;
+
+  /// No description provided for @historyDeleteConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل تريد حذف هذا التشخيص من السجل؟'**
+  String get historyDeleteConfirm;
+
+  /// No description provided for @historyDeleteFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر حذف العنصر'**
+  String get historyDeleteFailed;
+
+  /// No description provided for @historyConnectionFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر الاتصال بالسيرفر'**
+  String get historyConnectionFailed;
+
+  /// No description provided for @historyUnknownSeverity.
+  ///
+  /// In ar, this message translates to:
+  /// **'غير محددة'**
+  String get historyUnknownSeverity;
+
+  /// No description provided for @historySeverityLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'الخطورة'**
+  String get historySeverityLabel;
+
+  /// No description provided for @historyRecommendationsLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'التوصيات'**
+  String get historyRecommendationsLabel;
+
+  /// No description provided for @historyEstimatedCostLabel.
+  ///
+  /// In ar, this message translates to:
+  /// **'التكلفة التقديرية'**
+  String get historyEstimatedCostLabel;
+
+  /// No description provided for @historyEmpty.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد أي تشخيصات محفوظة بعد'**
+  String get historyEmpty;
+
+  /// No description provided for @historyNoFiltered.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا توجد تشخيصات بمستوى خطورة'**
+  String get historyNoFiltered;
+
+  /// No description provided for @historyUntitled.
+  ///
+  /// In ar, this message translates to:
+  /// **'تشخيص بدون عنوان'**
+  String get historyUntitled;
+
+  /// No description provided for @historyLoadFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر تحميل السجل'**
+  String get historyLoadFailed;
+
+  /// No description provided for @historyRetry.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة المحاولة'**
+  String get historyRetry;
 }
 
 class _AppLocalizationsDelegate

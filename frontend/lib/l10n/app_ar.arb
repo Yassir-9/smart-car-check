@@ -602,5 +602,21 @@
   "contactSignInRequired": "سجّل الدخول للتواصل مع البائع",
   "sellerContactUnavailable": "بيانات تواصل البائع غير متاحة",
   "sellerContactRateLimited": "طلبات تواصل كثيرة. حاول لاحقًا.",
-  "sellerContactFailed": "تعذّر جلب بيانات تواصل البائع"
+  "sellerContactFailed": "تعذّر جلب بيانات تواصل البائع",
+  "historyPageTitle": "سجل التشخيصات",
+  "historyLoading": "جاري تحميل سجل السيارة",
+  "historyFilterAll": "الكل",
+  "historyDeleteTitle": "حذف التشخيص",
+  "historyDeleteConfirm": "هل تريد حذف هذا التشخيص من السجل؟",
+  "historyDeleteFailed": "تعذر حذف العنصر",
+  "historyConnectionFailed": "تعذر الاتصال بالسيرفر",
+  "historyUnknownSeverity": "غير محددة",
+  "historySeverityLabel": "الخطورة",
+  "historyRecommendationsLabel": "التوصيات",
+  "historyEstimatedCostLabel": "التكلفة التقديرية",
+  "historyEmpty": "لا يوجد أي تشخيصات محفوظة بعد",
+  "historyNoFiltered": "لا توجد تشخيصات بمستوى خطورة",
+  "historyUntitled": "تشخيص بدون عنوان",
+  "historyLoadFailed": "تعذر تحميل السجل",
+  "historyRetry": "إعادة المحاولة"
 }
