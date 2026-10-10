@@ -1,4 +1,4 @@
-const REDACTED_KEYS = /authorization|token|secret|password|credential|api[-_]?key|firebase/i;
+const REDACTED_KEYS = /authorization|token|secret|password|credential|api[-_]?key|firebase|phone|mobile|contact/i;
 
 function sanitize(value, depth = 0) {
   if (depth > 3) return '[truncated]';
@@ -28,6 +28,7 @@ function write(level, message, context) {
 }
 
 module.exports = {
+  sanitize,
   info: (message, context) => write('info', message, context),
   warn: (message, context) => write('warn', message, context),
   error: (message, error, context) => write('error', message, { ...(context || {}), error }),

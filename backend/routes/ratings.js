@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const { db } = require('../firebaseAdmin');
+const logger = require('../utils/logger');
+const { localizedError } = require('../utils/localizedResponse');
 
 // جلب متوسط تقييم بائع معيّن
 router.get('/sellers/:id/rating', async (req, res) => {
@@ -24,8 +26,8 @@ router.get('/sellers/:id/rating', async (req, res) => {
       count: snapshot.docs.length,
     });
   } catch (error) {
-    console.error('خطأ بجلب التقييم:', error);
-    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
+    logger.error('Failed to load seller rating', error, { requestId: req.requestId });
+    res.status(500).json(localizedError(req, 'INTERNAL_ERROR'));
   }
 });
 
@@ -36,10 +38,10 @@ router.post('/sellers/:id/rating', verifyToken, async (req, res) => {
     const { rating, comment } = req.body;
 
     if (sellerId === req.uid) {
-      return res.status(400).json({ error: 'لا يمكنك تقييم نفسك' });
+      return res.status(400).json(localizedError(req, 'SELF_RATING'));
     }
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ error: 'التقييم يجب أن يكون بين 1 و5' });
+      return res.status(400).json(localizedError(req, 'INVALID_RATING'));
     }
 
     const docId = `${sellerId}_${req.uid}`;
@@ -53,8 +55,8 @@ router.post('/sellers/:id/rating', verifyToken, async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('خطأ بتسجيل التقييم:', error);
-    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
+    logger.error('Failed to save seller rating', error, { requestId: req.requestId });
+    res.status(500).json(localizedError(req, 'INTERNAL_ERROR'));
   }
 });
 
@@ -69,8 +71,8 @@ router.get('/sellers/:id/rating/mine', verifyToken, async (req, res) => {
     const data = doc.data();
     res.json({ rating: data.rating, comment: data.comment });
   } catch (error) {
-    console.error('خطأ بجلب تقييمك:', error);
-    res.status(500).json({ error: 'حدث خطأ، حاول مرة أخرى' });
+    logger.error('Failed to load personal seller rating', error, { requestId: req.requestId });
+    res.status(500).json(localizedError(req, 'INTERNAL_ERROR'));
   }
 });
 

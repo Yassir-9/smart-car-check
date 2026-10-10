@@ -46,7 +46,8 @@ function validateRepairReview(value) {
   return errors;
 }
 
-function normalizeRepairReview(value) {
+function normalizeRepairReview(value, locale = 'ar') {
+  const english = locale === 'en';
   return {
     analysis_complete: true,
     status: STATUSES.has(value.status) ? value.status : 'verify',
@@ -56,14 +57,14 @@ function normalizeRepairReview(value) {
     technician_questions: strings(value.technician_questions, 5).slice(0, 5),
     recommended_checks: strings(value.recommended_checks),
     parts: (Array.isArray(value.parts) ? value.parts : []).slice(0, 12).map((part) => ({
-      name: String(part.name || 'قطعة غير محددة'),
-      workshop_reason: String(part.workshop_reason || 'لم يذكر السبب'),
+      name: String(part.name || (english ? 'Unspecified part' : 'قطعة غير محددة')),
+      workshop_reason: String(part.workshop_reason || (english ? 'No reason provided' : 'لم يذكر السبب')),
       evidence: EVIDENCE.has(part.evidence) ? part.evidence : 'insufficient',
-      explanation: String(part.explanation || 'لا تتوفر أدلة كافية.'),
+      explanation: String(part.explanation || (english ? 'There is insufficient evidence.' : 'لا تتوفر أدلة كافية.')),
     })),
     price: {
       market_judgment: 'insufficient_market_data',
-      note: 'لا تتوفر لدينا بيانات سوق سعودية موثوقة كافية للحكم على السعر حاليًا.',
+      note: english ? 'There is not enough trusted Saudi market data to assess the price at this time.' : 'لا تتوفر لدينا بيانات سوق سعودية موثوقة كافية للحكم على السعر حاليًا.',
       quoted_total: Number.isFinite(value.price?.quoted_total) ? value.price.quoted_total : null,
       calculated_total: Number.isFinite(value.price?.calculated_total) ? value.price.calculated_total : null,
       discrepancy: Number.isFinite(value.price?.discrepancy) ? value.price.discrepancy : null,
@@ -73,16 +74,17 @@ function normalizeRepairReview(value) {
   };
 }
 
-function fallbackRepairReview() {
+function fallbackRepairReview(locale = 'ar') {
+  const english = locale === 'en';
   return {
     analysis_complete: false, status: 'verify',
-    summary: 'تعذر إنشاء مراجعة موثوقة للعرض. لم نفترض أن التشخيص أو القطع المقترحة صحيحة.',
-    aligned_evidence: [], evidence_needed: ['نتيجة فحص موثقة تشرح سبب تغيير كل قطعة'],
-    technician_questions: ['ما الاختبار الذي أثبت أن القطعة هي سبب العطل؟'],
-    recommended_checks: ['اطلب نتيجة الفحص قبل الموافقة على تغيير القطعة'], parts: [],
-    price: { market_judgment: 'insufficient_market_data', note: 'لا تتوفر لدينا بيانات سوق سعودية موثوقة كافية للحكم على السعر حاليًا.', quoted_total: null, calculated_total: null, discrepancy: null },
-    safety: { critical: false, advice: 'إذا كانت المشكلة مرتبطة بالفرامل أو الزيت أو الحرارة أو الدخان، لا تقد السيارة قبل فحصها.' },
-    warnings: ['لم تكتمل عملية التحليل'],
+    summary: english ? 'A reliable review of the quote could not be created. We did not assume that the diagnosis or proposed parts were correct.' : 'تعذر إنشاء مراجعة موثوقة للعرض. لم نفترض أن التشخيص أو القطع المقترحة صحيحة.',
+    aligned_evidence: [], evidence_needed: [english ? 'A documented test result explaining why each part should be replaced' : 'نتيجة فحص موثقة تشرح سبب تغيير كل قطعة'],
+    technician_questions: [english ? 'Which test proved that this part is the cause of the fault?' : 'ما الاختبار الذي أثبت أن القطعة هي سبب العطل؟'],
+    recommended_checks: [english ? 'Request the test result before approving the part replacement' : 'اطلب نتيجة الفحص قبل الموافقة على تغيير القطعة'], parts: [],
+    price: { market_judgment: 'insufficient_market_data', note: english ? 'There is not enough trusted Saudi market data to assess the price at this time.' : 'لا تتوفر لدينا بيانات سوق سعودية موثوقة كافية للحكم على السعر حاليًا.', quoted_total: null, calculated_total: null, discrepancy: null },
+    safety: { critical: false, advice: english ? 'If the issue involves brakes, oil, overheating, or smoke, do not drive before an inspection.' : 'إذا كانت المشكلة مرتبطة بالفرامل أو الزيت أو الحرارة أو الدخان، لا تقد السيارة قبل فحصها.' },
+    warnings: [english ? 'The analysis was not completed' : 'لم تكتمل عملية التحليل'],
   };
 }
 

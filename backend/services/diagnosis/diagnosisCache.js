@@ -11,13 +11,14 @@ function imageFingerprint(image) {
   return image?.data ? createHash('sha256').update(image.data).digest('hex') : null;
 }
 
-function createCacheKey({ uid, car, description, obdCodes, image }) {
+function createCacheKey({ uid, car, description, obdCodes, image, locale = 'ar' }) {
   const payload = JSON.stringify({
     uid,
     car: { brand: normalizeText(car?.brand), model: normalizeText(car?.model), year: car?.year || null },
     symptoms: normalizeText(description),
     obdCodes: [...obdCodes].sort(),
     image: imageFingerprint(image),
+    locale: locale === 'en' ? 'en' : 'ar',
   });
   return createHash('sha256').update(payload).digest('hex');
 }

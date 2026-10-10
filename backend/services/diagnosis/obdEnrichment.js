@@ -18,7 +18,8 @@ function localObdContext(codes) {
   });
 }
 
-function enrichObdResults(codes, aiItems, diagnosis) {
+function enrichObdResults(codes, aiItems, diagnosis, locale = 'ar') {
+  const english = locale === 'en';
   const byCode = new Map((Array.isArray(aiItems) ? aiItems : [])
     .filter((item) => item && typeof item.code === 'string')
     .map((item) => [item.code.trim().toUpperCase(), item]));
@@ -27,9 +28,13 @@ function enrichObdResults(codes, aiItems, diagnosis) {
     const ai = byCode.get(code) || {};
     return {
       code,
-      official_title: local?.title_ar || 'غير موجود في قاعدة Smart Car Check المحلية',
-      meaning: local?.title_ar || String(ai.meaning || 'تفسير محتمل يحتاج تحققًا فنيًا'),
-      severity: local?.severity || String(ai.severity || 'غير محددة'),
+      official_title: english
+        ? String(ai.meaning || (local ? code : 'Not found in the local Smart Car Check database'))
+        : (local?.title_ar || 'غير موجود في قاعدة Smart Car Check المحلية'),
+      meaning: english
+        ? String(ai.meaning || 'A possible interpretation that needs technical verification')
+        : (local?.title_ar || String(ai.meaning || 'تفسير محتمل يحتاج تحققًا فنيًا')),
+      severity: local?.severity || String(ai.severity || (english ? 'not specified' : 'غير محددة')),
       likely_causes: local?.common_causes || [],
       recommended_checks: Array.isArray(ai.recommended_checks) ? ai.recommended_checks.slice(0, 8) : [],
       possible_parts: Array.isArray(ai.possible_parts) ? ai.possible_parts.slice(0, 8) : [],
@@ -40,7 +45,9 @@ function enrichObdResults(codes, aiItems, diagnosis) {
       locally_verified: !!local,
       interpretation_notice: local
         ? null
-        : 'هذا تفسير محتمل من الذكاء الاصطناعي وليس تعريفًا مؤكدًا في قاعدة Smart Car Check المحلية.',
+        : (english
+          ? 'This is a possible AI interpretation, not a confirmed definition in the local Smart Car Check database.'
+          : 'هذا تفسير محتمل من الذكاء الاصطناعي وليس تعريفًا مؤكدًا في قاعدة Smart Car Check المحلية.'),
     };
   });
 }

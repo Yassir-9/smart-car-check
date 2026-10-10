@@ -8,9 +8,11 @@ const { validateDiagnosis, normalizeDiagnosis, fallbackDiagnosis, addLegacyAlias
 const { normalizeObdCodes, localObdContext, enrichObdResults } = require('../services/diagnosis/obdEnrichment');
 const { createCacheKey, getCachedDiagnosis, setCachedDiagnosis } = require('../services/diagnosis/diagnosisCache');
 const { isDevelopmentUsageLimitBypassEnabled, isQaUsageLimitBypassEnabled } = require('../services/diagnosis/usageLimit');
-const { buildDiagnosisPrompts } = require('../services/diagnosis/diagnosisPrompt');
+const { buildDiagnosisPrompts, normalizeLocale } = require('../services/diagnosis/diagnosisPrompt');
 const { normalizeDiagnosisImage } = require('../services/diagnosis/diagnosisImage');
 const { generateRepairReview } = require('../services/repairReview/repairReviewService');
+const { aiLimiter, searchLimiter } = require('../middleware/rateLimit');
+const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/marketplace/partPrivacy');
 
 const FREE_MONTHLY_LIMIT = 5;
 
@@ -55,7 +57,7 @@ async function getUserHistory(uid) {
   try {
     const snapshot = await db.collection('users').doc(uid)
       .collection('history').orderBy('timestamp', 'desc').get();
-    return snapshot.docs.map((doc) => doc.data());
+    return snapshot.docs.map((doc) => sanitizeDiagnosisHistoryEntry(doc.data()));
   } catch (e) {
     logger.error('Failed to load diagnosis history', e);
     return [];
@@ -94,7 +96,7 @@ async function findMatchingParts(possibleIssue, carBrand) {
     .filter((x) => x.keywordScore > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
-    .map((x) => x.part);
+    .map((x) => toPublicPart(x.part.id, x.part));
 
   return scored;
 }
@@ -158,9 +160,10 @@ async function findSimilarConfirmedCases(description, carBrand) {
   return `\n\nملاحظة: عندنا حالات مشابهة سابقة أكّد مستخدمون دقة تشخيصها، استفد منها كمرجع إضافي (لا تنسخها حرفياً، فقط استرشد بها):\n${lines}`;
 }
 
-router.post('/diagnose', verifyToken, async (req, res) => {
+router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
   try {
     const { description, car, obd_codes, image: rawImage } = req.body;
+    const locale = normalizeLocale(req.body.locale);
     const normalizedObdCodes = normalizeObdCodes(obd_codes);
     const imageResult = normalizeDiagnosisImage(rawImage);
     if (imageResult.error) {
@@ -169,7 +172,10 @@ router.post('/diagnose', verifyToken, async (req, res) => {
     const image = imageResult.image;
 
     if (!description && !image && normalizedObdCodes.length === 0) {
-      return res.status(400).json({ error: 'الوصف أو الصورة أو أكواد OBD مطلوبة' });
+      return res.status(400).json({
+        code: 'DIAGNOSIS_INPUT_REQUIRED',
+        error: locale === 'en' ? 'A description, image, or OBD code is required' : 'الوصف أو الصورة أو أكواد OBD مطلوبة',
+      });
     }
 
     const developmentBypass = isDevelopmentUsageLimitBypassEnabled();
@@ -185,7 +191,8 @@ router.post('/diagnose', verifyToken, async (req, res) => {
       : await checkAndTrackUsage(req.uid);
     if (!usageCheck.allowed) {
       return res.status(402).json({
-        error: 'استنفدت عدد التشخيصات المجانية لهذا الشهر',
+        code: 'FREE_DIAGNOSIS_LIMIT_REACHED',
+        error: locale === 'en' ? 'You have used all free diagnoses for this month' : 'استنفدت عدد التشخيصات المجانية لهذا الشهر',
         subscriptionRequired: true,
         freeUsageLimit: FREE_MONTHLY_LIMIT,
       });
@@ -198,6 +205,7 @@ router.post('/diagnose', verifyToken, async (req, res) => {
       description,
       obdCodes: normalizedObdCodes,
       image,
+      locale,
     });
     let diagnosis = await getCachedDiagnosis(db, req.uid, cacheKey);
     let cacheHit = !!diagnosis;
@@ -210,6 +218,7 @@ router.post('/diagnose', verifyToken, async (req, res) => {
         obdContext,
         hasImage: !!image,
         schemaDescription,
+        locale,
       });
       const provider = getAiProvider();
       let rawText;
@@ -221,7 +230,9 @@ router.post('/diagnose', verifyToken, async (req, res) => {
             system: systemPrompt,
             prompt: attempt === 0 || !rawText
               ? prompt
-              : `صحح الاستجابة التالية لتطابق المخطط فقط دون إضافة معلومات جديدة. الأخطاء: ${errors.join(', ')}\n${rawText}`,
+              : (locale === 'en'
+                ? `Correct the following response to match the schema only, without adding new information. Errors: ${errors.join(', ')}\n${rawText}`
+                : `صحح الاستجابة التالية لتطابق المخطط فقط دون إضافة معلومات جديدة. الأخطاء: ${errors.join(', ')}\n${rawText}`),
             image: attempt === 0 ? image : null,
             maxOutputTokens: 950,
             responseSchema: DIAGNOSIS_RESPONSE_SCHEMA,
@@ -240,12 +251,12 @@ router.post('/diagnose', verifyToken, async (req, res) => {
         providerError.provider = provider.name;
         throw providerError;
       }
-      diagnosis = normalizeDiagnosis(parsedCandidate);
-      diagnosis.obd_codes = enrichObdResults(normalizedObdCodes, parsedCandidate?.obd_codes, diagnosis);
+      diagnosis = normalizeDiagnosis(parsedCandidate, locale);
+      diagnosis.obd_codes = enrichObdResults(normalizedObdCodes, parsedCandidate?.obd_codes, diagnosis, locale);
       await setCachedDiagnosis(db, req.uid, cacheKey, diagnosis);
     }
 
-    const parsed = addLegacyAliases(diagnosis);
+    const parsed = addLegacyAliases(diagnosis, locale);
     parsed.obd_analysis = diagnosis.obd_codes;
     parsed.matched_parts = await findMatchingParts(diagnosis.title, car?.brand);
     parsed.cache_hit = cacheHit;
@@ -258,7 +269,7 @@ router.post('/diagnose', verifyToken, async (req, res) => {
       id: historyId,
       timestamp: new Date().toISOString(),
       car: car || {},
-      description: description || '(تشخيص بالصورة فقط)',
+      description: description || (locale === 'en' ? '(image-only diagnosis)' : '(تشخيص بالصورة فقط)'),
       result: parsed,
     });
 
@@ -275,8 +286,12 @@ router.post('/diagnose', verifyToken, async (req, res) => {
   } catch (error) {
     logger.error('Diagnosis request failed', error, { requestId: req.requestId });
     const statusCode = error.statusCode || 500;
+    const locale = normalizeLocale(req.body?.locale);
     res.status(statusCode).json({
-      error: statusCode === 502 ? 'مزود الذكاء الاصطناعي غير متاح حاليًا' : 'حدث خطأ أثناء التحليل، حاول مرة أخرى',
+      code: statusCode === 502 ? 'AI_PROVIDER_UNAVAILABLE' : 'DIAGNOSIS_FAILED',
+      error: statusCode === 502
+        ? (locale === 'en' ? 'The AI provider is currently unavailable' : 'مزود الذكاء الاصطناعي غير متاح حاليًا')
+        : (locale === 'en' ? 'An error occurred during analysis. Try again.' : 'حدث خطأ أثناء التحليل، حاول مرة أخرى'),
     });
   }
 });
@@ -331,7 +346,7 @@ router.patch('/history/:id/feedback', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/ask-expert', verifyToken, async (req, res) => {
+router.post('/ask-expert', verifyToken, aiLimiter, async (req, res) => {
   try {
     const { question, diagnosis, car } = req.body;
     if (!question || !question.trim()) {
@@ -365,7 +380,7 @@ router.post('/ask-expert', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/obd/part-search', verifyToken, async (req, res) => {
+router.post('/obd/part-search', verifyToken, searchLimiter, async (req, res) => {
   try {
     const { code, car } = req.body;
     if (!code) {
@@ -383,7 +398,7 @@ router.post('/obd/part-search', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/parts/external-search', verifyToken, async (req, res) => {
+router.post('/parts/external-search', verifyToken, searchLimiter, async (req, res) => {
   try {
     const { query, car } = req.body;
     if (!query) {
@@ -400,6 +415,7 @@ router.post('/parts/external-search', verifyToken, async (req, res) => {
 async function repairReviewHandler(req, res) {
   try {
     const { workshopStatement, proposedPart, proposedParts, quotedPrice, car, diagnosis, obd_codes, image: rawImage, openIssues, maintenanceHistory, repairHistory } = req.body;
+    const locale = normalizeLocale(req.body.locale);
     const imageResult = normalizeDiagnosisImage(rawImage);
     if (imageResult.error) return res.status(400).json({ error: imageResult.error });
     const image = imageResult.image;
@@ -407,7 +423,10 @@ async function repairReviewHandler(req, res) {
       ? proposedParts.filter((part) => typeof part === 'string' && part.trim()).slice(0, 20)
       : (typeof proposedPart === 'string' && proposedPart.trim() ? [proposedPart.trim()] : []);
     if (!String(workshopStatement || '').trim() && parts.length === 0 && !image) {
-      return res.status(400).json({ error: 'أدخل كلام الورشة أو القطع المقترحة أو صورة العرض' });
+      return res.status(400).json({
+        code: 'REPAIR_REVIEW_INPUT_REQUIRED',
+        error: locale === 'en' ? 'Enter the workshop statement, proposed parts, or a quote image' : 'أدخل كلام الورشة أو القطع المقترحة أو صورة العرض',
+      });
     }
     const codes = normalizeObdCodes(obd_codes);
     const numericPrice = quotedPrice === null || quotedPrice === undefined || String(quotedPrice).trim() === ''
@@ -431,7 +450,7 @@ async function repairReviewHandler(req, res) {
       repair_history: Array.isArray(repairHistory) ? repairHistory.slice(0, 10) : [],
       quote_image_attached: !!image,
     };
-    const result = await generateRepairReview({ provider: getAiProvider(), input, image });
+    const result = await generateRepairReview({ provider: getAiProvider(), input, image, locale });
     if (!result.analysis_complete) return res.status(200).json(result);
     const reviewId = Date.now().toString();
     result.review_id = reviewId;
@@ -441,7 +460,7 @@ async function repairReviewHandler(req, res) {
         diagnosisId: diagnosis?.id || diagnosis?.diagnosis_id || null,
         obdCodes: codes, transportType: req.body.obdScan?.transportType || null,
         workshopStatement: input.workshop_statement, proposedParts: parts,
-        quotedPrice: input.quoted_price_sar, result, createdAt: new Date().toISOString(),
+        quotedPrice: input.quoted_price_sar, locale, result, createdAt: new Date().toISOString(),
         repairOutcome: null,
       });
     } catch (storageError) {
@@ -450,11 +469,15 @@ async function repairReviewHandler(req, res) {
     return res.json(result);
   } catch (error) {
     logger.error('Before-you-pay analysis failed', error, { requestId: req.requestId });
-    return res.status(500).json({ error: 'تعذر مراجعة العرض الآن' });
+    const locale = normalizeLocale(req.body?.locale);
+    return res.status(500).json({
+      code: 'REPAIR_REVIEW_FAILED',
+      error: locale === 'en' ? 'The quote could not be reviewed at this time' : 'تعذر مراجعة العرض الآن',
+    });
   }
 }
 
-router.post('/repair-review', verifyToken, repairReviewHandler);
-router.post('/before-you-pay', verifyToken, repairReviewHandler);
+router.post('/repair-review', verifyToken, aiLimiter, repairReviewHandler);
+router.post('/before-you-pay', verifyToken, aiLimiter, repairReviewHandler);
 
 module.exports = router;

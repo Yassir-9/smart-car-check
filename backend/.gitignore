@@ -1,1 +1,8 @@
 yasr.json
+.env
+.env.*
+!.env.example
+*service-account*.json
+credentials/
+*.pem
+*.p12

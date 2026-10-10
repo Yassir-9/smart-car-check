@@ -1,16 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { auth, db } = require('../firebaseAdmin');
+const logger = require('../utils/logger');
+const { adminLimiter } = require('../middleware/rateLimit');
+const { requireAdminSecret } = require('../middleware/adminAuth');
 
-function requireAdminSecret(req, res, next) {
-  const secret = req.query.secret;
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
-    return res.status(401).send('غير مصرح لك بالدخول');
-  }
-  next();
-}
-
-router.get('/admin/stats', requireAdminSecret, async (req, res) => {
+router.get('/admin/stats', adminLimiter, requireAdminSecret, async (req, res) => {
   try {
     let usersCount = null;
     try {
@@ -43,7 +38,7 @@ router.get('/admin/stats', requireAdminSecret, async (req, res) => {
         .get();
       inaccurateCount = inaccSnap.data().count;
     } catch (e) {
-      console.error('خطأ بجلب إحصائيات التقييم (يحتاج فهرس Firestore):', e.message);
+      logger.warn('Feedback statistics query failed; Firestore index may be missing', { error: e });
     }
 
     const ordersSnap = await db.collection('orders').get();
@@ -78,7 +73,7 @@ router.get('/admin/stats', requireAdminSecret, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('خطأ بجلب إحصائيات الأدمن:', error);
+    logger.error('Admin statistics request failed', error, { requestId: req.requestId });
     res.status(500).json({ error: 'حدث خطأ أثناء جلب الإحصائيات' });
   }
 });

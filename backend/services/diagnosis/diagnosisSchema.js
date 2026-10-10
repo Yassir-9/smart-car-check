@@ -62,54 +62,60 @@ function validateDiagnosis(value) {
   return errors;
 }
 
-function normalizeDiagnosis(value) {
+function normalizeDiagnosis(value, locale = 'ar') {
+  const english = locale === 'en';
   const severity = SEVERITIES.has(value?.severity) ? value.severity : 'medium';
   const confidence = Number.isFinite(value?.confidence)
     ? Math.max(0, Math.min(100, Math.round(value.confidence)))
     : 0;
   return {
-    title: String(value?.title || 'تعذر تحديد المشكلة بدقة'),
-    summary: String(value?.summary || 'البيانات الحالية غير كافية لتشخيص موثوق.'),
+    title: String(value?.title || (english ? 'The problem could not be identified accurately' : 'تعذر تحديد المشكلة بدقة')),
+    summary: String(value?.summary || (english ? 'The current data is insufficient for a reliable diagnosis.' : 'البيانات الحالية غير كافية لتشخيص موثوق.')),
     severity,
     confidence,
     can_drive: value?.can_drive === true,
-    drive_advice: String(value?.drive_advice || 'تجنب القيادة إذا ظهرت أعراض تؤثر على السلامة.'),
+    drive_advice: String(value?.drive_advice || (english ? 'Avoid driving if any symptom affects safety.' : 'تجنب القيادة إذا ظهرت أعراض تؤثر على السلامة.')),
     likely_causes: stringList(value?.likely_causes),
     recommended_checks: stringList(value?.recommended_checks),
     possible_parts: stringList(value?.possible_parts),
-    next_step: String(value?.next_step || 'اطلب فحصًا مباشرًا من فني مؤهل.'),
+    next_step: String(value?.next_step || (english ? 'Request a direct inspection by a qualified technician.' : 'اطلب فحصًا مباشرًا من فني مؤهل.')),
     workshop_questions: stringList(value?.workshop_questions),
     warnings: stringList(value?.warnings),
     obd_codes: Array.isArray(value?.obd_codes) ? value.obd_codes.slice(0, 20) : [],
   };
 }
 
-function fallbackDiagnosis(reason = 'تعذر التحقق من استجابة نظام التحليل') {
+function fallbackDiagnosis(reason, locale = 'ar') {
+  const english = locale === 'en';
+  const fallbackReason = reason || (english ? 'The analysis system response could not be verified' : 'تعذر التحقق من استجابة نظام التحليل');
   return normalizeDiagnosis({
-    title: 'التحليل غير مكتمل',
-    summary: 'لم نتمكن من إنشاء نتيجة موثوقة من البيانات الحالية. لم يتم افتراض عطل أو قطعة تالفة.',
+    title: english ? 'Analysis incomplete' : 'التحليل غير مكتمل',
+    summary: english ? 'We could not create a reliable result from the current data. No fault or failed part was assumed.' : 'لم نتمكن من إنشاء نتيجة موثوقة من البيانات الحالية. لم يتم افتراض عطل أو قطعة تالفة.',
     severity: 'medium',
     confidence: 0,
     can_drive: false,
-    drive_advice: 'إذا كانت هناك لمبة تحذير حمراء أو تغير في الفرامل أو التوجيه أو حرارة المحرك، أوقف السيارة واطلب فحصًا مباشرًا.',
+    drive_advice: english ? 'If there is a red warning light or a change in braking, steering, or engine temperature, stop the vehicle and request a direct inspection.' : 'إذا كانت هناك لمبة تحذير حمراء أو تغير في الفرامل أو التوجيه أو حرارة المحرك، أوقف السيارة واطلب فحصًا مباشرًا.',
     likely_causes: [],
-    recommended_checks: ['إعادة الفحص ببيانات أوضح', 'قراءة أكواد OBD لدى فني مؤهل'],
+    recommended_checks: english ? ['Repeat the check with clearer data', 'Have a qualified technician read the OBD codes'] : ['إعادة الفحص ببيانات أوضح', 'قراءة أكواد OBD لدى فني مؤهل'],
     possible_parts: [],
-    next_step: 'أعد المحاولة أو اعرض السيارة على فني مؤهل.',
-    workshop_questions: ['ما الاختبار الذي يؤكد سبب العطل قبل تغيير أي قطعة؟'],
-    warnings: [reason],
+    next_step: english ? 'Try again or have the vehicle inspected by a qualified technician.' : 'أعد المحاولة أو اعرض السيارة على فني مؤهل.',
+    workshop_questions: english ? ['Which test confirms the fault cause before replacing any part?'] : ['ما الاختبار الذي يؤكد سبب العطل قبل تغيير أي قطعة؟'],
+    warnings: [fallbackReason],
     obd_codes: [],
-  });
+  }, locale);
 }
 
-function addLegacyAliases(result) {
+function addLegacyAliases(result, locale = 'ar') {
+  const english = locale === 'en';
   const severityAr = { low: 'منخفضة', medium: 'متوسطة', high: 'عالية', critical: 'عالية' };
   return {
     ...result,
     possible_issue: result.title,
     explanation: result.summary,
     confidence_score: result.confidence,
-    confidence_reason: result.confidence === 0 ? 'تعذر التحقق من مخرجات التحليل' : 'النسبة مبنية على البيانات المتاحة وجودة تطابقها',
+    confidence_reason: result.confidence === 0
+      ? (english ? 'The analysis output could not be verified' : 'تعذر التحقق من مخرجات التحليل')
+      : (english ? 'The score is based on the available data and how well it matches' : 'النسبة مبنية على البيانات المتاحة وجودة تطابقها'),
     recommendations: result.recommended_checks,
     severity_code: result.severity,
     severity_ar: severityAr[result.severity] || 'متوسطة',
