@@ -40,7 +40,7 @@ function createCorsOptions(configuredValue = process.env.ALLOWED_ORIGINS || '') 
         return callback(error);
       },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-secret'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-secret', 'x-app-locale'],
     },
   };
 }
