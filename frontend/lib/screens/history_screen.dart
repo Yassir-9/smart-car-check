@@ -1,3 +1,4 @@
+import '../utils/localized_vehicle_text.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -349,7 +350,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final id = item['id'].toString();
     final car = (item['car'] as Map?) ?? {};
     final carLabel = car.isNotEmpty
-        ? '${car['brand'] ?? ''} ${car['model'] ?? ''} - ${car['year'] ?? ''}'
+        ? '${l10n.carBrand((car['brand'] ?? '').toString())} ${l10n.localizedCarModel((car['model'] ?? '').toString(), Localizations.localeOf(context).languageCode)} - ${car['year'] ?? ''}'
         : null;
 
     return InkWell(
