@@ -1,3 +1,4 @@
+import '../utils/localized_vehicle_text.dart';
 import 'package:flutter/material.dart';
 import '../config/app_brand.dart';
 import '../models/car_model.dart';
@@ -31,6 +32,7 @@ class HomeV2Screen extends StatefulWidget {
 class _HomeV2ScreenState extends State<HomeV2Screen> {
   bool _loading = true;
   CarModel? _car;
+  List<CarModel> _allCars = [];
   List<VehicleIssue> _issues = [];
   List<MaintenanceReminder> _reminders = [];
   List<Map<String, dynamic>> _repairs = [];
@@ -59,6 +61,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
       if (mounted) {
         setState(() {
           _car = car;
+          _allCars = cars;
           _issues = issues;
           _repairs = repairs;
           _reminders = reminders;
@@ -215,7 +218,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                                                 color: AppColors.surface,
                                                 fontSize: 12)),
                                         const SizedBox(height: 2),
-                                        Text('${_car!.brand} ${_car!.model}',
+                                        Text('${l10n.carBrand(_car!.brand)} ${l10n.localizedCarModel(_car!.model, Localizations.localeOf(context).languageCode)}',
                                             style: const TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.w900,
@@ -499,6 +502,29 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                             ]))
                       ]))));
 
+  String _reminderDisplayTitle(MaintenanceReminder reminder) {
+    final l10n = AppLocalizations.of(context);
+    final id = reminder.id;
+    String? type;
+    if (id.endsWith('_registration')) {
+      type = l10n.registrationExpiry;
+    } else if (id.endsWith('_insurance')) {
+      type = l10n.insuranceExpiry;
+    } else if (id.endsWith('_inspection')) {
+      type = l10n.inspectionExpiry;
+    }
+    if (type == null) return reminder.title;
+
+    final carId = id.substring(0, id.lastIndexOf('_'));
+    final cars = _allCars;
+    for (final car in cars) {
+      if (car.id == carId) {
+        final lang = Localizations.localeOf(context).languageCode;
+        return '$type - ${l10n.carBrand(car.brand)} ${l10n.localizedCarModel(car.model, lang)} - ${car.year}';
+      }
+    }
+    return reminder.title;
+  }
   Widget _activityOverview(bool isWide) {
     final l10n = AppLocalizations.of(context);
     final maintenance = _overviewSection(
@@ -513,7 +539,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
               contentPadding: EdgeInsets.zero,
               leading:
                   Icon(Icons.build_circle_outlined, color: _maintenanceColor),
-              title: Text(_upcoming.first.title),
+              title: Text(_reminderDisplayTitle(_upcoming.first)),
               subtitle: Text(
                   '${_upcoming.first.dueDate.year}/${_upcoming.first.dueDate.month}/${_upcoming.first.dueDate.day}')),
     );
