@@ -210,7 +210,7 @@ class _CarsScreenState extends State<CarsScreen> {
                         items: dropdownItems
                             .map((m) => DropdownMenuItem(
                                 value: m,
-                                child: Text(m == 'أخرى' ? l10n.other : m)))
+                                child: Text(m == 'أخرى' ? l10n.other : l10n.localizedCarModel(m, Localizations.localeOf(context).languageCode))))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) {

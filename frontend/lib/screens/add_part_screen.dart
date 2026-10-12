@@ -270,7 +270,7 @@ class _AddPartScreenState extends State<AddPartScreen> {
                     initialValue: _selectedModel,
                     isExpanded: true,
                     items: models
-                        .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                        .map((m) => DropdownMenuItem(value: m, child: Text(l10n.localizedCarModel(m, Localizations.localeOf(context).languageCode))))
                         .toList(),
                     onChanged: (val) => setState(() => _selectedModel = val),
                   ),
