@@ -1,3 +1,4 @@
+import '../utils/localized_vehicle_text.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -468,7 +469,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                      Text('${car.brand} ${car.model}',
+                      Text('${AppLocalizations.of(context).carBrand(car.brand)} ${AppLocalizations.of(context).localizedCarModel(car.model, Localizations.localeOf(context).languageCode)}',
                           style: TextStyle(
                               color: selected ? Colors.white : null,
                               fontWeight: FontWeight.w800)),

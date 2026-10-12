@@ -1,3 +1,4 @@
+import '../utils/localized_vehicle_text.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../l10n/app_localizations.dart';
@@ -18,8 +19,8 @@ class WorkshopModeScreen extends StatelessWidget {
     required this.checks,
   });
 
-  String _shareText(AppLocalizations l10n) => l10n.workshopShareText(
-      '${car.brand} ${car.model} ${car.year}',
+  String _shareText(AppLocalizations l10n, BuildContext context) => l10n.workshopShareText(
+      '${l10n.carBrand(car.brand)} ${l10n.localizedCarModel(car.model, Localizations.localeOf(context).languageCode)} ${car.year}',
       car.currentMileage?.toString() ?? l10n.unrecorded,
       codes.isEmpty ? l10n.noCodesRead : codes.join(', '),
       symptoms.isEmpty ? l10n.noSymptomsAdded : symptoms,
@@ -48,7 +49,7 @@ class WorkshopModeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${car.brand} ${car.model}',
+                      Text('${l10n.carBrand(car.brand)} ${l10n.localizedCarModel(car.model, Localizations.localeOf(context).languageCode)}',
                           style: AppTypography.title),
                       Text(
                           '${car.year}  •  ${car.currentMileage ?? l10n.unrecorded} ${l10n.kmShort}',
@@ -88,7 +89,7 @@ class WorkshopModeScreen extends StatelessWidget {
               const SizedBox(height: 18),
               ElevatedButton.icon(
                 onPressed: () => SharePlus.instance
-                    .share(ShareParams(text: _shareText(l10n))),
+                    .share(ShareParams(text: _shareText(l10n, context))),
                 icon: const Icon(Icons.share_outlined),
                 label: Text(l10n.shareWithTechnician),
               ),

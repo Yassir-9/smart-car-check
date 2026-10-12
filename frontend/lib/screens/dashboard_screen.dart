@@ -1,3 +1,5 @@
+import '../l10n/app_localizations.dart';
+import '../utils/localized_vehicle_text.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -455,7 +457,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${car.brand} ${car.model} ${car.year}',
+                      Text('${AppLocalizations.of(context).carBrand(car.brand)} ${AppLocalizations.of(context).localizedCarModel(car.model, Localizations.localeOf(context).languageCode)} ${car.year}',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 13)),
                       Text(_carStatusLabel(car),
