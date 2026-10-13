@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import '../theme_notifier.dart';
 import '../locale_notifier.dart';
@@ -97,11 +98,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.privacy_tip_outlined,
                     title: l10n.privacyPolicy,
                     subtitle: l10n.privacyPolicySubtitle,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AccountPrivacyScreen(),
-                      ),
+                    onTap: () => launchUrl(
+                      Uri.parse('https://mysmartcar.app/privacy-policy.html'),
+                      mode: LaunchMode.externalApplication,
                     ),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
