@@ -1911,4 +1911,85 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get historyRetry => 'Retry';
+
+  @override
+  String get privacyAndAccount => 'Privacy and account';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get privacyPolicySubtitle =>
+      'Learn how your data is used and protected';
+
+  @override
+  String get deleteMyAccount => 'Delete my account';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Permanently delete the account and personal data';
+
+  @override
+  String get deleteAccountTitle => 'Delete your Smart Car Check account';
+
+  @override
+  String get deleteAccountIntro =>
+      'Deleting your account permanently removes your personal data.';
+
+  @override
+  String get deleteAccountDeletes =>
+      'We delete your account, vehicles, diagnoses, maintenance and repair records, parts listings, and ratings connected to you.';
+
+  @override
+  String get deleteAccountRetains =>
+      'Limited financial records may be retained without direct account identifiers for up to 7 years to meet legal and accounting obligations.';
+
+  @override
+  String get deleteAccountIrreversible =>
+      'This action cannot be undone after it completes.';
+
+  @override
+  String get deleteAccountConfirm => 'I understand, delete my account';
+
+  @override
+  String get deleteAccountCancel => 'Cancel';
+
+  @override
+  String get deleteAccountPasswordPrompt =>
+      'Enter your password to confirm your identity';
+
+  @override
+  String get deleteAccountOtpPrompt =>
+      'Enter the verification code sent to your phone';
+
+  @override
+  String get deleteAccountOtpSent => 'A new verification code was sent';
+
+  @override
+  String get deleteAccountReauthFailed =>
+      'We could not confirm your identity. Try again.';
+
+  @override
+  String get deleteAccountProcessing => 'Deleting account and data…';
+
+  @override
+  String get deleteAccountCompleted => 'Your account was deleted';
+
+  @override
+  String get deleteAccountRetryRequired =>
+      'Some deletion steps could not finish. Your account is blocked from creating new data and the request can be resumed safely.';
+
+  @override
+  String get deleteAccountRecentAuthRequired =>
+      'Please confirm your identity again before deletion.';
+
+  @override
+  String get deleteAccountNetworkError =>
+      'Could not reach the server. Your account has not been treated as deleted.';
+
+  @override
+  String get accountDeletionLearnMore => 'What happens to my data?';
+
+  @override
+  String get confirmAction => 'Confirm';
 }

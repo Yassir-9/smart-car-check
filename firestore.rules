@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function accountCanWrite(uid) {
+      return signedInAs(uid) &&
+        (!exists(/databases/$(database)/documents/users/$(uid)) ||
+          get(/databases/$(database)/documents/users/$(uid)).data.deletionPending != true);
+    }
+
+    match /users/{uid} {
+      allow read: if signedInAs(uid);
+      allow create: if signedInAs(uid) && request.resource.data.deletionPending != true;
+      allow update: if accountCanWrite(uid) && request.resource.data.deletionPending != true;
+      allow delete: if false;
+
+      match /{document=**} {
+        allow read: if signedInAs(uid);
+        allow write: if accountCanWrite(uid);
+      }
+    }
+
+    // Public reads are served by the Backend Public DTO. Marketplace writes,
+    // orders, ratings, deletion requests, and retained financial records are
+    // server-only through Firebase Admin.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

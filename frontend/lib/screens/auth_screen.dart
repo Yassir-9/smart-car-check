@@ -260,8 +260,10 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       const SizedBox(height: 24),
                       if (!_codeSent) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 12,
+                          runSpacing: 8,
                           children: [
                             ChoiceChip(
                               label: Text(_t('البريد الإلكتروني', 'Email')),
@@ -273,7 +275,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                 });
                               },
                             ),
-                            const SizedBox(width: 12),
                             ChoiceChip(
                               label: Text(_t('رقم الجوال', 'Phone')),
                               selected: !_emailMode,

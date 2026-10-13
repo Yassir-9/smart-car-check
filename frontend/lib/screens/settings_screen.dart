@@ -4,6 +4,7 @@ import '../locale_notifier.dart';
 import '../services/auth_service.dart';
 import 'cars_screen.dart';
 import '../l10n/app_localizations.dart';
+import 'account_privacy_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -82,6 +83,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             builder: (context) => const CarsScreen()),
                       );
                     },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildSectionTitle(l10n.privacyAndAccount),
+            Container(
+              decoration: _sectionDecoration(cardColor),
+              child: Column(
+                children: [
+                  _listRow(
+                    icon: Icons.privacy_tip_outlined,
+                    title: l10n.privacyPolicy,
+                    subtitle: l10n.privacyPolicySubtitle,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AccountPrivacyScreen(),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  _listRow(
+                    icon: Icons.delete_forever_outlined,
+                    title: l10n.deleteMyAccount,
+                    subtitle: l10n.deleteAccountSubtitle,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AccountPrivacyScreen(),
+                      ),
+                    ),
                   ),
                 ],
               ),

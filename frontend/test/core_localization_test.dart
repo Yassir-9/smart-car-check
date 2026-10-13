@@ -108,8 +108,8 @@ void main() {
       languageCode: 'en',
       home: const AuthScreen(),
     ));
-    expect(find.text('Sign in with your phone number'), findsOneWidget);
-    expect(find.text('Send verification code'), findsOneWidget);
+    expect(find.text('Sign in with email'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
     expectNoUnexpectedArabic(tester);
     expect(tester.takeException(), isNull);
   });

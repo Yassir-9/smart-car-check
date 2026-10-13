@@ -13,6 +13,7 @@ const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscription');
 const ratingsRoutes = require('./routes/ratings');
 const ordersRoutes = require('./routes/orders');
+const accountRoutes = require('./routes/account');
 
 const app = express();
 // Render terminates TLS at one trusted proxy hop. This keeps req.ip accurate
@@ -46,6 +47,7 @@ app.use('/api', adminRoutes);
 app.use('/api', subscriptionRoutes);
 app.use('/api', ratingsRoutes);
 app.use('/api', ordersRoutes);
+app.use('/api', accountRoutes);
 
 app.get('/', (req, res) => {
   res.send('سيرفر تطبيق تشخيص السيارات الذكي يعمل بنجاح ✅');

@@ -3614,6 +3614,144 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'إعادة المحاولة'**
   String get historyRetry;
+
+  /// No description provided for @privacyAndAccount.
+  ///
+  /// In ar, this message translates to:
+  /// **'الخصوصية والحساب'**
+  String get privacyAndAccount;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In ar, this message translates to:
+  /// **'سياسة الخصوصية'**
+  String get privacyPolicy;
+
+  /// No description provided for @privacyPolicySubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'اطّلع على كيفية استخدام بياناتك وحمايتها'**
+  String get privacyPolicySubtitle;
+
+  /// No description provided for @deleteMyAccount.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف حسابي'**
+  String get deleteMyAccount;
+
+  /// No description provided for @deleteAccountSubtitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف الحساب والبيانات الشخصية نهائيًا'**
+  String get deleteAccountSubtitle;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'حذف حساب Smart Car Check'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountIntro.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيؤدي حذف الحساب إلى إزالة بياناتك الشخصية نهائيًا.'**
+  String get deleteAccountIntro;
+
+  /// No description provided for @deleteAccountDeletes.
+  ///
+  /// In ar, this message translates to:
+  /// **'سيتم حذف بيانات الحساب والسيارات والتشخيصات والصيانة والإصلاحات وإعلانات القطع والتقييمات المرتبطة بك.'**
+  String get deleteAccountDeletes;
+
+  /// No description provided for @deleteAccountRetains.
+  ///
+  /// In ar, this message translates to:
+  /// **'قد نحتفظ بسجلات مالية محدودة بعد نزع بيانات الهوية لمدة تصل إلى 7 سنوات للالتزامات النظامية والمحاسبية.'**
+  String get deleteAccountRetains;
+
+  /// No description provided for @deleteAccountIrreversible.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يمكن التراجع عن هذا الإجراء بعد اكتماله.'**
+  String get deleteAccountIrreversible;
+
+  /// No description provided for @deleteAccountConfirm.
+  ///
+  /// In ar, this message translates to:
+  /// **'أفهم ذلك، احذف حسابي'**
+  String get deleteAccountConfirm;
+
+  /// No description provided for @deleteAccountCancel.
+  ///
+  /// In ar, this message translates to:
+  /// **'إلغاء'**
+  String get deleteAccountCancel;
+
+  /// No description provided for @deleteAccountPasswordPrompt.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل كلمة المرور لتأكيد هويتك'**
+  String get deleteAccountPasswordPrompt;
+
+  /// No description provided for @deleteAccountOtpPrompt.
+  ///
+  /// In ar, this message translates to:
+  /// **'أدخل رمز التحقق المرسل إلى جوالك'**
+  String get deleteAccountOtpPrompt;
+
+  /// No description provided for @deleteAccountOtpSent.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم إرسال رمز تحقق جديد'**
+  String get deleteAccountOtpSent;
+
+  /// No description provided for @deleteAccountReauthFailed.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر تأكيد هويتك. أعد المحاولة.'**
+  String get deleteAccountReauthFailed;
+
+  /// No description provided for @deleteAccountProcessing.
+  ///
+  /// In ar, this message translates to:
+  /// **'جارٍ حذف الحساب والبيانات…'**
+  String get deleteAccountProcessing;
+
+  /// No description provided for @deleteAccountCompleted.
+  ///
+  /// In ar, this message translates to:
+  /// **'اكتمل حذف الحساب'**
+  String get deleteAccountCompleted;
+
+  /// No description provided for @deleteAccountRetryRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر إكمال بعض خطوات الحذف. حسابك موقوف عن إنشاء بيانات جديدة وسيُستأنف الطلب بأمان عند إعادة المحاولة.'**
+  String get deleteAccountRetryRequired;
+
+  /// No description provided for @deleteAccountRecentAuthRequired.
+  ///
+  /// In ar, this message translates to:
+  /// **'يلزم تأكيد هويتك مجددًا قبل الحذف.'**
+  String get deleteAccountRecentAuthRequired;
+
+  /// No description provided for @deleteAccountNetworkError.
+  ///
+  /// In ar, this message translates to:
+  /// **'تعذر الاتصال بالخادم. لم يتم اعتبار الحساب محذوفًا.'**
+  String get deleteAccountNetworkError;
+
+  /// No description provided for @accountDeletionLearnMore.
+  ///
+  /// In ar, this message translates to:
+  /// **'ما الذي يحدث لبياناتي؟'**
+  String get accountDeletionLearnMore;
+
+  /// No description provided for @confirmAction.
+  ///
+  /// In ar, this message translates to:
+  /// **'تأكيد'**
+  String get confirmAction;
 }
 
 class _AppLocalizationsDelegate

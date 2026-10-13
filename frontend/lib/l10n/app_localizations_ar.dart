@@ -1879,4 +1879,81 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get historyRetry => 'إعادة المحاولة';
+
+  @override
+  String get privacyAndAccount => 'الخصوصية والحساب';
+
+  @override
+  String get privacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get privacyPolicySubtitle =>
+      'اطّلع على كيفية استخدام بياناتك وحمايتها';
+
+  @override
+  String get deleteMyAccount => 'حذف حسابي';
+
+  @override
+  String get deleteAccountSubtitle => 'حذف الحساب والبيانات الشخصية نهائيًا';
+
+  @override
+  String get deleteAccountTitle => 'حذف حساب Smart Car Check';
+
+  @override
+  String get deleteAccountIntro =>
+      'سيؤدي حذف الحساب إلى إزالة بياناتك الشخصية نهائيًا.';
+
+  @override
+  String get deleteAccountDeletes =>
+      'سيتم حذف بيانات الحساب والسيارات والتشخيصات والصيانة والإصلاحات وإعلانات القطع والتقييمات المرتبطة بك.';
+
+  @override
+  String get deleteAccountRetains =>
+      'قد نحتفظ بسجلات مالية محدودة بعد نزع بيانات الهوية لمدة تصل إلى 7 سنوات للالتزامات النظامية والمحاسبية.';
+
+  @override
+  String get deleteAccountIrreversible =>
+      'لا يمكن التراجع عن هذا الإجراء بعد اكتماله.';
+
+  @override
+  String get deleteAccountConfirm => 'أفهم ذلك، احذف حسابي';
+
+  @override
+  String get deleteAccountCancel => 'إلغاء';
+
+  @override
+  String get deleteAccountPasswordPrompt => 'أدخل كلمة المرور لتأكيد هويتك';
+
+  @override
+  String get deleteAccountOtpPrompt => 'أدخل رمز التحقق المرسل إلى جوالك';
+
+  @override
+  String get deleteAccountOtpSent => 'تم إرسال رمز تحقق جديد';
+
+  @override
+  String get deleteAccountReauthFailed => 'تعذر تأكيد هويتك. أعد المحاولة.';
+
+  @override
+  String get deleteAccountProcessing => 'جارٍ حذف الحساب والبيانات…';
+
+  @override
+  String get deleteAccountCompleted => 'اكتمل حذف الحساب';
+
+  @override
+  String get deleteAccountRetryRequired =>
+      'تعذر إكمال بعض خطوات الحذف. حسابك موقوف عن إنشاء بيانات جديدة وسيُستأنف الطلب بأمان عند إعادة المحاولة.';
+
+  @override
+  String get deleteAccountRecentAuthRequired =>
+      'يلزم تأكيد هويتك مجددًا قبل الحذف.';
+
+  @override
+  String get deleteAccountNetworkError =>
+      'تعذر الاتصال بالخادم. لم يتم اعتبار الحساب محذوفًا.';
+
+  @override
+  String get accountDeletionLearnMore => 'ما الذي يحدث لبياناتي؟';
+
+  @override
+  String get confirmAction => 'تأكيد';
 }

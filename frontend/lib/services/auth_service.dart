@@ -51,6 +51,77 @@ class AuthService {
   }
 
   static String? _verificationId;
+  static String? _reauthVerificationId;
+
+  static Future<bool> reauthenticateWithPassword(String password) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null || email.isEmpty) return false;
+    try {
+      await user.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: email, password: password),
+      );
+      return true;
+    } on FirebaseAuthException catch (error) {
+      _logFirebaseError('account deletion reauthentication', error);
+      return false;
+    }
+  }
+
+  static Future<void> sendReauthenticationOtp({
+    required void Function() onCodeSent,
+    required void Function(String) onError,
+    required void Function() onAutoVerified,
+  }) async {
+    final user = _auth.currentUser;
+    final phone = user?.phoneNumber;
+    if (user == null || phone == null || phone.isEmpty) {
+      onError('reauthentication-unavailable');
+      return;
+    }
+    await _auth.verifyPhoneNumber(
+      phoneNumber: phone,
+      verificationCompleted: (credential) async {
+        try {
+          await user.reauthenticateWithCredential(credential);
+          onAutoVerified();
+        } on FirebaseAuthException catch (error) {
+          _logFirebaseError('automatic deletion reauthentication', error);
+          onError(error.code);
+        }
+      },
+      verificationFailed: (error) {
+        _logFirebaseError('deletion reauthentication OTP', error);
+        onError(error.code);
+      },
+      codeSent: (verificationId, _) {
+        _reauthVerificationId = verificationId;
+        onCodeSent();
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        _reauthVerificationId = verificationId;
+      },
+      timeout: const Duration(seconds: 60),
+    );
+  }
+
+  static Future<bool> verifyReauthenticationOtp(String code) async {
+    final user = _auth.currentUser;
+    final verificationId = _reauthVerificationId;
+    if (user == null || verificationId == null) return false;
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: code.trim(),
+      );
+      await user.reauthenticateWithCredential(credential);
+      _reauthVerificationId = null;
+      return true;
+    } on FirebaseAuthException catch (error) {
+      _logFirebaseError('manual deletion reauthentication', error);
+      return false;
+    }
+  }
 
   static String? normalizeSaudiPhone(String raw) {
     var digits = raw.replaceAll(RegExp(r'\D'), '');

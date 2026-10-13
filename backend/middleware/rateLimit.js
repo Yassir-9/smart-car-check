@@ -37,6 +37,7 @@ const marketplaceReadLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 
 const marketplaceWriteLimiter = createLimiter({ windowMs: 60 * 60 * 1000, limit: 30 });
 const checkoutLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 10 });
 const adminLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 10 });
+const accountDeletionLimiter = createLimiter({ windowMs: 24 * 60 * 60 * 1000, limit: 5 });
 // Applied only after Firebase authentication. Both limits must pass so a single
 // account cannot scrape broadly and many accounts cannot bypass one IP budget.
 const contactUidDailyLimiter = createLimiter({
@@ -60,6 +61,7 @@ module.exports = {
   marketplaceWriteLimiter,
   checkoutLimiter,
   adminLimiter,
+  accountDeletionLimiter,
   contactUidKey,
   contactIpKey,
   contactUidDailyLimiter,
