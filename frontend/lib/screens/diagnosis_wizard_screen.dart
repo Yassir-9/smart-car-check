@@ -762,10 +762,11 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
 
   Widget _bottomActions() {
     final l10n = AppLocalizations.of(context);
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     final primary = ElevatedButton.icon(
       onPressed: _submitting ? null : () => _step < 3 ? _continue() : _submit(),
       icon: Icon(
-          _step == 3 ? Icons.auto_awesome_rounded : Icons.arrow_back_rounded),
+          _step == 3 ? Icons.auto_awesome_rounded : (isRtl ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded)),
       label: Text(_step == 3
           ? (_submitting ? l10n.analyzing : l10n.startDiagnosis)
           : l10n.next),
@@ -797,7 +798,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
                           child: IconButton.outlined(
                             tooltip: l10n.back,
                             onPressed: _goBack,
-                            icon: const Icon(Icons.arrow_forward_rounded),
+                            icon: Icon(isRtl ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -809,7 +810,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
                       if (_step > 0)
                         TextButton.icon(
                           onPressed: _goBack,
-                          icon: const Icon(Icons.arrow_forward_rounded),
+                          icon: Icon(isRtl ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded),
                           label: Text(l10n.back),
                         ),
                       const SizedBox(width: 8),
