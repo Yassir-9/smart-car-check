@@ -5,6 +5,7 @@ const SAFETY_INSTRUCTIONS = [
   'إذا ذُكرت لمبة زيت حمراء أو حرارة مرتفعة أو فقدان فرامل أو دخان أو حريق، اجعل can_drive=false وتوصية التوقف الآمن وطلب المساعدة واضحة.',
   'إذا كانت الصورة غير واضحة أو غير مرتبطة بالسيارة، صرّح بذلك في warnings ولا تستنتج عطلًا منها.',
   'إذا كانت الصورة هي المصدر الوحيد وكانت غير صالحة للتحليل، أرجع confidence=0 ولا تفترض عطلًا أو قطعة.',
+  'أرجع confidence كعدد يمثل نسبة مئوية من 0 إلى 100، وليس كسرًا عشريًا من 0 إلى 1. قدّر الثقة بناءً على قوة الأدلة، ولا تخلط بينها وبين خطورة العطل.',
 ].join(' ');
 
 const SAFETY_INSTRUCTIONS_EN = [
@@ -14,6 +15,7 @@ const SAFETY_INSTRUCTIONS_EN = [
   'If a red oil warning, high temperature, brake loss, smoke, or fire is reported, set can_drive=false and clearly recommend stopping safely and seeking assistance.',
   'If the image is unclear or unrelated to the vehicle, state that in warnings and do not infer a fault from it.',
   'If the image is the only source and is unsuitable for analysis, return confidence=0 and do not assume a fault or part.',
+  'Return confidence as a percentage number from 0 to 100, not a decimal fraction from 0 to 1. Base confidence on the strength of evidence, not on fault severity.',
 ].join(' ');
 
 function normalizeLocale(locale) {
