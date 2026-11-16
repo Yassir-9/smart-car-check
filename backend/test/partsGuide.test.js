@@ -36,15 +36,30 @@ test('disabled flag: /go/* answers 404 and never redirects', () => withApp({}, a
   }
 }));
 
-test('speero redirects to its verified search URL built from part/make/model/year only', () => withApp(ON, async (base) => {
+test('speero redirects to its verified search URL built from the part name only', () => withApp(ON, async (base) => {
   const res = await get(`${base}/go/speero?${q({ part: 'oil filter', make: 'Toyota', model: 'Camry', year: '2020' })}`);
   assert.equal(res.status, 302);
   const location = new URL(res.headers.get('location'));
   assert.equal(location.origin, 'https://speero.net');
   assert.equal(location.pathname, '/search');
-  assert.equal(location.searchParams.get('q'), 'Toyota Camry 2020 oil filter');
+  assert.equal(location.searchParams.get('q'), 'oil filter');
+  assert.doesNotMatch(res.headers.get('location'), /Toyota|Camry|2020/);
   assert.equal(res.headers.get('cache-control'), 'no-store');
   assert.equal(res.headers.get('referrer-policy'), 'no-referrer');
+}));
+
+test('web store still uses make/model/year (restricted Google search)', () => withApp(ON, async (base) => {
+  const res = await get(`${base}/go/web?${q({ part: 'oil filter', make: 'Toyota', model: 'Camry', year: '2020' })}`);
+  assert.equal(new URL(res.headers.get('location')).searchParams.get('q'), 'Toyota Camry 2020 oil filter (site:speero.net)');
+}));
+
+test('Arabic and spaces are percent-encoded exactly once in Location (no %25)', () => withApp(ON, async (base) => {
+  const res = await get(`${base}/go/speero?${q({ part: 'شمعات احتراق Spark Plugs', make: 'تويوتا', model: 'لاند كروزر' })}`);
+  const raw = res.headers.get('location');
+  assert.equal(raw, 'https://speero.net/search?q=' + encodeURIComponent('شمعات احتراق Spark Plugs'));
+  assert.doesNotMatch(raw, /%25/);
+  assert.match(raw, /%D8%B4%D9%85%D8%B9%D8%A7%D8%AA%20%D8%A7%D8%AD%D8%AA%D8%B1%D8%A7%D9%82%20Spark%20Plugs$/);
+  assert.equal(decodeURIComponent(new URL(raw).search.slice(3)), 'شمعات احتراق Spark Plugs');
 }));
 
 test('web store is a Google search restricted to the enabled partner sites', () => withApp(ON, async (base) => {
@@ -162,6 +177,6 @@ test('the redirector is rate limited per IP', () => withApp(ON, async (base) => 
 }));
 
 test('parseGuideQuery composes make model year part in that order', () => {
-  assert.deepEqual(parseGuideQuery({ part: 'pads', make: 'Nissan', model: 'Sunny', year: '2018' }), { ok: true, q: 'Nissan Sunny 2018 pads' });
-  assert.deepEqual(parseGuideQuery({ part: ' pads ' }), { ok: true, q: 'pads' });
+  assert.deepEqual(parseGuideQuery({ part: 'pads', make: 'Nissan', model: 'Sunny', year: '2018' }), { ok: true, q: 'Nissan Sunny 2018 pads', fields: { part: 'pads', make: 'Nissan', model: 'Sunny', year: '2018' } });
+  assert.deepEqual(parseGuideQuery({ part: ' pads ' }), { ok: true, q: 'pads', fields: { part: 'pads' } });
 });

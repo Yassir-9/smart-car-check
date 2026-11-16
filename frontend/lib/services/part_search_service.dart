@@ -13,6 +13,48 @@ class PartStore {
   final String name;
 }
 
+final RegExp _latinLetter = RegExp(r'[A-Za-z]');
+
+String _collapse(String s) => s.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+/// The text to search a store with, taken from the AI part name.
+///
+/// * If a Latin (English) term sits inside parentheses, only that term is used:
+///   "شمعات احتراق (Spark Plugs)" -> "Spark Plugs". With several, the first wins;
+///   with nested parentheses the outer one wins and the inner ones are dropped.
+/// * Otherwise the name is used as is, minus the parentheses themselves.
+/// * Empty or blank input gives an empty string.
+String searchTermFromPartName(String name) {
+  final groups = <String>[];
+  final buffer = StringBuffer();
+  var depth = 0;
+  for (final unit in name.runes) {
+    final ch = String.fromCharCode(unit);
+    if (ch == '(') {
+      if (depth == 0) buffer.clear();
+      depth++;
+      if (depth > 1) buffer.write(' ');
+    } else if (ch == ')') {
+      if (depth == 0) continue;
+      depth--;
+      if (depth == 0) {
+        groups.add(buffer.toString());
+      } else {
+        buffer.write(' ');
+      }
+    } else if (depth > 0) {
+      buffer.write(ch);
+    }
+  }
+  for (final group in groups) {
+    if (_latinLetter.hasMatch(group)) {
+      // keep only the Latin text of the group (nested parentheses already flattened)
+      return _collapse(group);
+    }
+  }
+  return _collapse(name.replaceAll(RegExp(r'[()]'), ' '));
+}
+
 /// Text the user's search is built from: vehicle make/model/year and the part name.
 /// Never a VIN, a user id or the engine type.
 String buildPartSearchQuery({

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  buildDiagnosisPrompts, SAFETY_INSTRUCTIONS, SAFETY_INSTRUCTIONS_EN, SUMMARY_VOICE, SUMMARY_VOICE_EN,
+  buildDiagnosisPrompts, SAFETY_INSTRUCTIONS, SAFETY_INSTRUCTIONS_EN, SUMMARY_VOICE, SUMMARY_VOICE_EN, PARTS_TERMS, PARTS_TERMS_EN,
 } = require('../services/diagnosis/diagnosisPrompt');
 
 const base = { car: { brand: 'Nissan', model: 'Maxima', year: 2016 }, description: 'اهتزاز', obdContext: [], hasImage: false, schemaDescription: '{schema}' };
@@ -33,12 +33,21 @@ test('the English prompt has the same instruction', () => {
 });
 
 test('nothing else in the system prompts changed: removing the new sentence gives the old prompt exactly', () => {
-  assert.equal(ar().system.replace(` ${SUMMARY_VOICE}`, ''), OLD_AR);
-  assert.equal(en().system.replace(` ${SUMMARY_VOICE_EN}`, ''), OLD_EN);
+  assert.equal(ar().system.replace(` ${PARTS_TERMS}`, '').replace(` ${SUMMARY_VOICE}`, ''), OLD_AR);
+  assert.equal(en().system.replace(` ${PARTS_TERMS_EN}`, '').replace(` ${SUMMARY_VOICE_EN}`, ''), OLD_EN);
 });
 
 test('the user prompt payload is untouched', () => {
   const payload = JSON.parse(ar().prompt);
   assert.deepEqual(Object.keys(payload), ['vehicle', 'symptoms', 'scanned_obd_codes', 'image_attached', 'response_locale', 'instruction']);
   assert.match(payload.instruction, /جميع المصادر المتاحة معًا/);
+});
+
+test('the prompts ask for the English technical term of each possible part', () => {
+  assert.ok(ar().system.includes(PARTS_TERMS));
+  assert.match(PARTS_TERMS, /possible_parts/);
+  assert.match(PARTS_TERMS, /بين قوسين/);
+  assert.match(PARTS_TERMS, /Spark Plugs/);
+  assert.ok(en().system.includes(PARTS_TERMS_EN));
+  assert.match(PARTS_TERMS_EN, /possible_parts/);
 });

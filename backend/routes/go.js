@@ -25,7 +25,7 @@ function createGoRouter({ limiter = partsGuideLimiter, env = process.env } = {})
   router.get('/:store', (req, res) => {
     const parsed = parseGuideQuery(req.query);
     if (!parsed.ok) return res.status(400).json({ code: parsed.code });
-    const destination = buildDestination(req.params.store, parsed.q, env);
+    const destination = buildDestination(req.params.store, parsed, env);
     if (!destination.ok) return res.status(404).json({ code: destination.code });
     res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
     return res.redirect(302, destination.url);
