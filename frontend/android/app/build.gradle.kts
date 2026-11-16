@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -7,10 +9,18 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val signingProperties = Properties()
+val signingFile = rootProject.file("key.properties")
+if (signingFile.exists()) {
+    signingFile.inputStream().use { stream ->
+        signingProperties.load(stream)
+    }
+}
+
 android {
-    namespace = "com.example.car_ai_diagnosis"
+    namespace = "com.smartcarcheck.app"
     compileSdk = 36
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -20,7 +30,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.car_ai_diagnosis"
+        applicationId = "com.smartcarcheck.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -31,9 +41,15 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (signingFile.exists()) {
+                signingConfigs.create("release") {
+                    keyAlias = signingProperties["keyAlias"] as String
+                    keyPassword = signingProperties["keyPassword"] as String
+                    storeFile = file(signingProperties["storeFile"] as String)
+                    storePassword = signingProperties["storePassword"] as String
+                }
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }

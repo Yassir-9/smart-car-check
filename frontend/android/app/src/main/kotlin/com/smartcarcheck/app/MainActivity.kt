@@ -1,4 +1,4 @@
-package com.example.car_ai_diagnosis
+package com.smartcarcheck.app
 
 import io.flutter.embedding.android.FlutterActivity
 
