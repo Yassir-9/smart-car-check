@@ -171,15 +171,16 @@ class _BeforeYouPayScreenState extends State<BeforeYouPayScreen> {
                 'title': issue.title,
                 'notes': issue.notes
               },
-            'obd_codes': ObdSessionService.lastCodes.isNotEmpty
-                ? ObdSessionService.lastCodes
+            'obd_codes': ObdSessionService.codesFor(_car?.id).isNotEmpty
+                ? ObdSessionService.codesFor(_car?.id)
                 : (issue?.obdCodes ?? const <String>[]),
-            if (ObdSessionService.lastResult != null)
+            if (ObdSessionService.scanFor(_car?.id) != null)
               'obdScan': {
                 'transportType':
-                    ObdSessionService.lastResult!.transportType.name,
-                'timestamp':
-                    ObdSessionService.lastResult!.timestamp.toIso8601String()
+                    ObdSessionService.scanFor(_car?.id)!.transportType.name,
+                'timestamp': ObdSessionService.scanFor(_car?.id)!
+                    .timestamp
+                    .toIso8601String()
               },
             'openIssues': _issues
                 .where((i) => i.status != 'repaired')
@@ -405,7 +406,7 @@ class _BeforeYouPayScreenState extends State<BeforeYouPayScreen> {
       _row(
           l10n.availableContext,
           l10n.contextSummary(_issues.length, _maintenance.length,
-              ObdSessionService.lastCodes.length))
+              ObdSessionService.codesFor(_car?.id).length))
     ]);
   }
 

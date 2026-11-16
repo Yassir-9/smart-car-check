@@ -75,6 +75,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
       }
       if (cars.isNotEmpty) {
         _car = cars.firstWhere((c) => c.id == active, orElse: () => cars.first);
+        ObdSessionService.clearIfOtherVehicle(_car!.id);
       }
       _loading = false;
     });
@@ -86,9 +87,17 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
     await _loadCars();
   }
 
+  List<String> get _obdCodes => ObdSessionService.codesFor(_car?.id);
+
+  String get _scanTimeLabel {
+    final time = ObdSessionService.scanFor(_car?.id)?.timestamp;
+    if (time == null) return '';
+    return formatObdScanTime(time);
+  }
+
   Future<void> _openObd() async {
     await Navigator.push(
-        context, MaterialPageRoute(builder: (_) => const ObdConnectScreen()));
+        context, MaterialPageRoute(builder: (_) => ObdConnectScreen(car: _car)));
     if (mounted) {
       setState(() {});
     }
@@ -156,7 +165,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
     } else if (_step == 2) {
       message = _draft.hasActualData(
               symptoms: _symptoms.text,
-              obdCodes: ObdSessionService.lastCodes,
+              obdCodes: _obdCodes,
               imageBytes: _image)
           ? null
           : l10n.diagnosisInputRequired;
@@ -198,7 +207,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
               'currentMileage': _car!.currentMileage
             },
             symptoms: _symptoms.text,
-            obdCodes: ObdSessionService.lastCodes,
+            obdCodes: _obdCodes,
             imageBytes: _image,
             imageMime: _imageMime,
             locale: locale,
@@ -448,7 +457,10 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: InkWell(
             borderRadius: BorderRadius.circular(AppRadius.md),
-            onTap: () => setState(() => _car = car),
+            onTap: () => setState(() {
+              ObdSessionService.clearIfOtherVehicle(car.id);
+              _car = car;
+            }),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               child: Row(children: [
@@ -554,17 +566,17 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
             decoration: BoxDecoration(
               color: AppSemanticColors.softBackground(
                   context,
-                  ObdSessionService.lastCodes.isEmpty
+                  _obdCodes.isEmpty
                       ? AppColors.unknown
                       : AppColors.success),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(children: [
               Icon(
-                  ObdSessionService.lastCodes.isEmpty
+                  _obdCodes.isEmpty
                       ? Icons.bluetooth_disabled_outlined
                       : Icons.bluetooth_connected_rounded,
-                  color: ObdSessionService.lastCodes.isEmpty
+                  color: _obdCodes.isEmpty
                       ? AppColors.unknown
                       : AppColors.success),
               const SizedBox(width: 10),
@@ -573,11 +585,11 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                     Text(
-                        ObdSessionService.lastCodes.isEmpty
+                        _obdCodes.isEmpty
                             ? l10n.obdNotConnected
                             : l10n.obdCodesRead,
                         style: const TextStyle(fontWeight: FontWeight.w800)),
-                    if (ObdSessionService.lastResult != null)
+                    if (ObdSessionService.scanFor(_car?.id) != null) ...[
                       Text(
                         [
                           if (ObdSessionService.lastDeviceName != null)
@@ -586,11 +598,27 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
                         ].join(' • '),
                         style: AppTypography.secondary(context, fontSize: 11.5),
                       ),
+                      Text(
+                        l10n.obdScanTime(_scanTimeLabel),
+                        style: AppTypography.secondary(context, fontSize: 11.5),
+                      ),
+                    ],
+                    if (ObdSessionService.problemFor(_car?.id) != null)
+                      Text(
+                        ObdSessionService.problemFor(_car?.id) ==
+                                ObdScanProblem.otherVehicle
+                            ? l10n.obdScanOtherCar
+                            : l10n.obdScanExpired,
+                        style: const TextStyle(
+                            color: AppColors.warning,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
                     Text(
-                        ObdSessionService.lastCodes.isEmpty
+                        _obdCodes.isEmpty
                             ? l10n.connectObdToRead
                             : l10n.obdCodesAvailable(
-                                ObdSessionService.lastCodes.length),
+                                _obdCodes.length),
                         style:
                             AppTypography.secondary(context, fontSize: 11.5)),
                   ])),
@@ -600,15 +628,21 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
           OutlinedButton.icon(
               onPressed: _openObd,
               icon: const Icon(Icons.bluetooth_searching),
-              label: Text(ObdSessionService.lastCodes.isEmpty
-                  ? l10n.connectObd
-                  : l10n.manageObd)),
-          if (ObdSessionService.lastCodes.isNotEmpty) ...[
+              label: Text(
+                  _obdCodes.isEmpty && ObdSessionService.problemFor(_car?.id) == null
+                      ? l10n.connectObd
+                      : l10n.rescanObd)),
+          if (_obdCodes.isNotEmpty)
+            TextButton.icon(
+                onPressed: () => setState(ObdSessionService.ignore),
+                icon: const Icon(Icons.visibility_off_outlined),
+                label: Text(l10n.ignoreObdCodes)),
+          if (_obdCodes.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: ObdSessionService.lastCodes
+                children: _obdCodes
                     .map((c) => StatusChip(label: c, color: AppColors.warning))
                     .toList()),
           ],
@@ -711,9 +745,9 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
               _reviewRow(l10n.vehicle, _car?.label ?? ''),
               _reviewRow(l10n.selectedSources, _usedSourceLabels.join(' + ')),
               if (_draft.isSelected(DiagnosisMethod.obd) &&
-                  ObdSessionService.lastCodes.isNotEmpty)
+                  _obdCodes.isNotEmpty)
                 _reviewRow(
-                    l10n.obdCodes, ObdSessionService.lastCodes.join(', ')),
+                    l10n.obdCodes, _obdCodes.join(', ')),
               if (_draft.isSelected(DiagnosisMethod.symptoms) &&
                   _symptoms.text.trim().isNotEmpty)
                 _reviewRow(l10n.symptoms, _symptoms.text.trim()),
@@ -742,7 +776,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
 
   List<String> get _usedSourceLabels => [
         if (_draft.isSelected(DiagnosisMethod.obd) &&
-            ObdSessionService.lastCodes.isNotEmpty)
+            _obdCodes.isNotEmpty)
           'OBD',
         if (_draft.isSelected(DiagnosisMethod.symptoms) &&
             _symptoms.text.trim().isNotEmpty)

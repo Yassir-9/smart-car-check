@@ -830,6 +830,36 @@ abstract class AppLocalizations {
   /// **'الاتصال بجهاز OBD'**
   String get connectObd;
 
+  /// No description provided for @obdScanTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت الفحص: {time}'**
+  String obdScanTime(String time);
+
+  /// No description provided for @obdScanOtherCar.
+  ///
+  /// In ar, this message translates to:
+  /// **'آخر فحص OBD كان لسيارة أخرى ولن يُستخدم. أعد المسح لهذه السيارة.'**
+  String get obdScanOtherCar;
+
+  /// No description provided for @obdScanExpired.
+  ///
+  /// In ar, this message translates to:
+  /// **'مضى على آخر فحص OBD أكثر من 30 دقيقة ولن يُستخدم. أعد المسح.'**
+  String get obdScanExpired;
+
+  /// No description provided for @ignoreObdCodes.
+  ///
+  /// In ar, this message translates to:
+  /// **'تجاهل الأكواد'**
+  String get ignoreObdCodes;
+
+  /// No description provided for @rescanObd.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة المسح'**
+  String get rescanObd;
+
   /// No description provided for @manageObd.
   ///
   /// In ar, this message translates to:

@@ -391,6 +391,25 @@ class AppLocalizationsAr extends AppLocalizations {
   String get connectObd => 'الاتصال بجهاز OBD';
 
   @override
+  String obdScanTime(String time) {
+    return 'وقت الفحص: $time';
+  }
+
+  @override
+  String get obdScanOtherCar =>
+      'آخر فحص OBD كان لسيارة أخرى ولن يُستخدم. أعد المسح لهذه السيارة.';
+
+  @override
+  String get obdScanExpired =>
+      'مضى على آخر فحص OBD أكثر من 30 دقيقة ولن يُستخدم. أعد المسح.';
+
+  @override
+  String get ignoreObdCodes => 'تجاهل الأكواد';
+
+  @override
+  String get rescanObd => 'إعادة المسح';
+
+  @override
   String get manageObd => 'إدارة اتصال OBD';
 
   @override
