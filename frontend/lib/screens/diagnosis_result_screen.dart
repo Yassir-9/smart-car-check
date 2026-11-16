@@ -1,4 +1,5 @@
 import '../config/feature_flags.dart';
+import '../utils/bidi_text.dart';
 import 'package:flutter/material.dart';
 import '../models/car_model.dart';
 import '../l10n/app_localizations.dart';
@@ -26,8 +27,12 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
   VehicleIssue? _savedIssue;
   bool _saving = false;
 
+  /// AI text may mix Arabic and English (e.g. part names): isolate the Latin runs.
+  String _bidi(String text) => bidiText(context, text);
+
   List<String> _list(String key) =>
       List<String>.from(widget.result[key] ?? const []);
+
   /// Questions generated with the diagnosis; blank entries are dropped.
   List<String> get _workshopQuestions => _list('workshop_questions')
       .map((q) => q.trim())
@@ -192,7 +197,7 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                       children: [
                         const Text('•  '),
                         Expanded(
-                            child: Text(question,
+                            child: Text(_bidi(question),
                                 style: const TextStyle(height: 1.5)))
                       ])),
           ]));
@@ -200,7 +205,8 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
   Widget _partsSection(AppLocalizations l10n) => Card(
       child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               const Icon(Icons.build_outlined,
                   size: 20, color: AppColors.accent),
@@ -215,7 +221,7 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(children: [
                     Expanded(
-                        child: Text(part,
+                        child: Text(_bidi(part),
                             style: const TextStyle(height: 1.5))),
                     Semantics(
                         label: l10n.findPartNamed(part),
@@ -253,7 +259,8 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                       children: [
                         const Text('•  '),
                         Expanded(
-                            child: Text(e, style: const TextStyle(height: 1.5)))
+                            child: Text(_bidi(e),
+                                style: const TextStyle(height: 1.5)))
                       ]))),
             ])));
   }
@@ -315,14 +322,18 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                         ]),
                     const SizedBox(height: 16),
                     Text(
-                        widget.result['title'] ??
-                            widget.result['possible_issue'] ??
-                            l10n.diagnosisFallbackTitle,
+                        _bidi((widget.result['title'] ??
+                                widget.result['possible_issue'] ??
+                                l10n.diagnosisFallbackTitle)
+                            .toString()),
                         style: AppTypography.display),
                     const SizedBox(height: 10),
                     Text(l10n.canDrive, style: AppTypography.label),
                     const SizedBox(height: 3),
-                    Text(driveAdvice.isEmpty ? l10n.noDriveAdvice : driveAdvice,
+                    Text(
+                        driveAdvice.isEmpty
+                            ? l10n.noDriveAdvice
+                            : _bidi(driveAdvice.toString()),
                         style:
                             AppTypography.body.copyWith(color: _severityColor)),
                   ]),
@@ -330,7 +341,11 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
             const SizedBox(height: 20),
             AppSectionHeader(title: l10n.whatWeFound),
             const SizedBox(height: 6),
-            Text(widget.result['summary'] ?? widget.result['explanation'] ?? '',
+            Text(
+                _bidi((widget.result['summary'] ??
+                        widget.result['explanation'] ??
+                        '')
+                    .toString()),
                 style: const TextStyle(fontSize: 15, height: 1.7)),
             if (_savedIssue?.returnedAfterRepair == true) ...[
               const SizedBox(height: 12),
@@ -351,9 +366,12 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
               ...obd.map((item) => Card(
                   child: ListTile(
                       title: Text(
-                          '${item['code']} — ${item['official_title'] ?? item['fault_name'] ?? ''}',
+                          _bidi(
+                              '${item['code']} — ${item['official_title'] ?? item['fault_name'] ?? ''}'),
                           style: const TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: Text(item['meaning'] ?? l10n.unknownDtcMeaning,
+                      subtitle: Text(
+                          _bidi((item['meaning'] ?? l10n.unknownDtcMeaning)
+                              .toString()),
                           style: const TextStyle(height: 1.5)),
                       trailing: item['locally_verified'] == false
                           ? const Icon(Icons.info_outline,
@@ -398,7 +416,9 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                               style:
                                   const TextStyle(fontWeight: FontWeight.w800)),
                           const SizedBox(height: 6),
-                          Text(widget.result['next_step'] ?? '',
+                          Text(
+                              _bidi((widget.result['next_step'] ?? '')
+                                  .toString()),
                               style: const TextStyle(height: 1.6))
                         ]))),
             const SizedBox(height: 16),
