@@ -328,7 +328,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get freeDiagnosisLimitReached =>
-      'انتهى الحد المجاني لهذا الشهر. يمكنك إدارة الاشتراك من الصفحة الرئيسية.';
+      'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.';
 
   @override
   String diagnosisRequestFailed(int status) {

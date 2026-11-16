@@ -14,7 +14,7 @@ const { generateRepairReview } = require('../services/repairReview/repairReviewS
 const { aiLimiter, searchLimiter } = require('../middleware/rateLimit');
 const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/marketplace/partPrivacy');
 
-const FREE_MONTHLY_LIMIT = 5;
+const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
 
 function currentMonthKey() {
   const now = new Date();
@@ -37,7 +37,7 @@ async function checkAndTrackUsage(uid) {
   const usageDoc = await usageRef.get();
   const currentCount = usageDoc.exists ? (usageDoc.data().diagnosisCount || 0) : 0;
 
-  if (currentCount >= FREE_MONTHLY_LIMIT) {
+  if (currentCount >= getFreeMonthlyLimit()) {
     return { allowed: false, isActive: false, usageCount: currentCount };
   }
 
@@ -192,9 +192,12 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
     if (!usageCheck.allowed) {
       return res.status(402).json({
         code: 'FREE_DIAGNOSIS_LIMIT_REACHED',
-        error: locale === 'en' ? 'You have used all free diagnoses for this month' : 'استنفدت عدد التشخيصات المجانية لهذا الشهر',
-        subscriptionRequired: true,
-        freeUsageLimit: FREE_MONTHLY_LIMIT,
+        error: locale === 'en'
+          ? "You have reached this month's free diagnosis limit. It renews at the start of next month."
+          : 'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.',
+        subscriptionRequired: false,
+        freeUsageLimit: getFreeMonthlyLimit(),
+        limitResetsAt: nextMonthStartIso(),
       });
     }
 

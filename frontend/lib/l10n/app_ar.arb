@@ -104,7 +104,7 @@
   "selectCarToContinue": "اختر سيارة للمتابعة.",
   "selectDiagnosisSource": "اختر مصدرًا واحدًا على الأقل للفحص.",
   "diagnosisInputRequired": "أضف وصفًا للأعراض أو أكواد OBD أو صورة.",
-  "freeDiagnosisLimitReached": "انتهى الحد المجاني لهذا الشهر. يمكنك إدارة الاشتراك من الصفحة الرئيسية.",
+  "freeDiagnosisLimitReached": "وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.",
   "diagnosisRequestFailed": "تعذر إكمال الفحص الآن ({status})",
   "@diagnosisRequestFailed": {"placeholders":{"status":{"type":"int"}}},
   "serverConnectionFailed": "تعذر الاتصال بالخادم",

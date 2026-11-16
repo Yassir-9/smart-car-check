@@ -336,7 +336,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get freeDiagnosisLimitReached =>
-      'You have reached this month\'s free limit. Manage your subscription from the home screen.';
+      'You have reached this month\'s free diagnosis limit. It renews at the start of next month.';
 
   @override
   String diagnosisRequestFailed(int status) {

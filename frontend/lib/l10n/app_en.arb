@@ -104,7 +104,7 @@
   "selectCarToContinue": "Select a vehicle to continue.",
   "selectDiagnosisSource": "Select at least one diagnostic source.",
   "diagnosisInputRequired": "Add symptoms, OBD codes, or an image.",
-  "freeDiagnosisLimitReached": "You have reached this month's free limit. Manage your subscription from the home screen.",
+  "freeDiagnosisLimitReached": "You have reached this month's free diagnosis limit. It renews at the start of next month.",
   "diagnosisRequestFailed": "The diagnosis could not be completed ({status})",
   "@diagnosisRequestFailed": {"placeholders":{"status":{"type":"int"}}},
   "serverConnectionFailed": "Could not connect to the server",

@@ -719,7 +719,7 @@ abstract class AppLocalizations {
   /// No description provided for @freeDiagnosisLimitReached.
   ///
   /// In ar, this message translates to:
-  /// **'انتهى الحد المجاني لهذا الشهر. يمكنك إدارة الاشتراك من الصفحة الرئيسية.'**
+  /// **'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.'**
   String get freeDiagnosisLimitReached;
 
   /// No description provided for @diagnosisRequestFailed.
