@@ -16,6 +16,9 @@ const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/mar
 
 const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
 
+// If the first AI round trip already took this long, do not start a second one.
+const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
+
 function currentMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -227,7 +230,11 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
       let rawText;
       let parsedCandidate;
       let errors = [];
+      let timedOut = false;
+      const aiStartedAt = Date.now();
       for (let attempt = 0; attempt < 2; attempt += 1) {
+        // A second AI round trip is only worth it while there is time left.
+        if (attempt > 0 && Date.now() - aiStartedAt > SECOND_ATTEMPT_MAX_ELAPSED_MS) break;
         try {
           rawText = await provider.generateJson({
             system: systemPrompt,
@@ -246,11 +253,16 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
         } catch (error) {
           errors = ['provider response unavailable or invalid'];
           logger.warn('AI diagnosis attempt failed', { provider: provider.name, attempt: attempt + 1, error });
+          if (error?.code === 'AI_TIMEOUT') {
+            timedOut = true;
+            break;
+          }
         }
       }
       if (errors.length !== 0) {
         const providerError = new Error(`AI provider ${provider.name} failed to return a valid diagnosis`);
-        providerError.statusCode = 502;
+        providerError.statusCode = timedOut ? 504 : 502;
+        providerError.code = timedOut ? 'AI_TIMEOUT' : undefined;
         providerError.provider = provider.name;
         throw providerError;
       }
@@ -290,6 +302,14 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
     logger.error('Diagnosis request failed', error, { requestId: req.requestId });
     const statusCode = error.statusCode || 500;
     const locale = normalizeLocale(req.body?.locale);
+    if (statusCode === 504) {
+      return res.status(504).json({
+        code: 'AI_TIMEOUT',
+        error: locale === 'en'
+          ? 'The analysis took too long. Your free diagnosis was not used. Please try again.'
+          : 'استغرق التحليل وقتًا أطول من المعتاد. لم يُحتسب من تشخيصاتك. حاول مرة أخرى.',
+      });
+    }
     res.status(statusCode).json({
       code: statusCode === 502 ? 'AI_PROVIDER_UNAVAILABLE' : 'DIAGNOSIS_FAILED',
       error: statusCode === 502
