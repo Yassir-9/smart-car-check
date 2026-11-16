@@ -10,33 +10,67 @@
 <body>
 <main>
   <h1>سياسة خصوصية Smart Car Check</h1>
-  <p><small>آخر تحديث: 13 أكتوبر 2026</small></p>
-  <div class="card"><strong>باختصار:</strong> نستخدم بياناتك لتسجيل الدخول، وحفظ سياراتك وسجلاتها، وتقديم التشخيص ومراجعة عروض الإصلاح، وتشغيل سوق القطع والاشتراكات. لا نبيع بياناتك.</div>
+  <p><small>آخر تحديث: 16 نوفمبر 2026 · الإصدار 1.0.2</small></p>
+  <div class="card"><strong>باختصار:</strong> نستخدم بياناتك لتسجيل الدخول، وحفظ سياراتك وسجلاتها، وتقديم التشخيص الإرشادي بالذكاء الاصطناعي ومراجعة عروض الورش، وتنبيهك بمواعيد الصيانة. لا نبيع بياناتك، ولا يحتوي التطبيق على إعلانات أو أدوات تحليلات أو تتبع انهيارات من أطراف خارجية.</div>
   <h2>البيانات التي نعالجها</h2>
-  <ul><li>معرّف حساب Firebase ورقم الجوال أو البريد المستخدم للمصادقة.</li><li>بيانات السيارات وسجلات التشخيص والصيانة والإصلاح والتحقق منها.</li><li>وصف الأعراض وأكواد OBD والصور المرفقة اختياريًا. يُحوّل الصوت إلى نص على جهازك عند استخدام الإدخال الصوتي، ولا نخزّن تسجيلًا صوتيًا في الخادم ضمن السلوك الحالي.</li><li>إعلانات سوق القطع، بيانات التواصل التي يضيفها البائع، الطلبات والتقييمات.</li><li>حالة الاشتراك ومعرّفات الفواتير وحالة الدفع. لا يستلم Smart Car Check بيانات بطاقتك الكاملة.</li><li>سجلات تقنية وأمنية محدودة مثل وقت الطلب، المسار، الحالة ومعرّف الطلب. لا تُسجّل الرموز السرية أو أرقام الهاتف في سجلات التطبيق.</li></ul>
+  <ul>
+    <li><strong>الحساب:</strong> معرّف حساب Firebase ورقم الجوال أو البريد الإلكتروني المستخدم لتسجيل الدخول.</li>
+    <li><strong>سياراتك وسجلاتها:</strong> بيانات السيارات (الماركة والموديل والسنة وقراءة العداد، واختياريًا رقم الهيكل VIN ونوع المحرك وناقل الحركة وتواريخ انتهاء التأمين والاستمارة والفحص)، وسجل التشخيصات، والصيانة والتذكيرات، والإصلاحات والتحقق منها.</li>
+    <li><strong>مدخلات التشخيص:</strong> وصف الأعراض الذي تكتبه، وأكواد الأعطال التي يقرؤها التطبيق من جهاز OBD عبر البلوتوث، وصورة اختيارية تلتقطها أو تختارها. تُرسل الصورة للتحليل ولا تُحفظ في سجلك.</li>
+    <li><strong>«قبل ما تدفع للورشة»:</strong> ما تدخله من كلام الورشة والقطع المقترحة والسعر وصورة اختيارية للعرض، ونتيجة المراجعة. تُحفظ النصوص ونتيجة المراجعة ولا تُحفظ الصورة.</li>
+    <li><strong>عدّاد الاستخدام:</strong> عدد التشخيصات التي أجريتها في الشهر الحالي لتطبيق الحد الشهري المجاني.</li>
+    <li><strong>على جهازك فقط:</strong> اللغة والمظهر وإتمام شاشة التعريف. وتُجدول تذكيرات الصيانة كإشعارات محلية على الجهاز.</li>
+    <li><strong>سجلات تقنية وأمنية محدودة:</strong> وقت الطلب والمسار والحالة ومدته ومعرّف الطلب. تُحجب الرموز السرية وأرقام الهاتف من سجلات التطبيق. وقد تعالج جهة الاستضافة بيانات اتصال معتادة (مثل عنوان IP) لتشغيل الخادم.</li>
+  </ul>
+  <p>لا نجمع موقعك الجغرافي. يطلب أندرويد 11 وما قبله إذن الموقع للبحث عن أجهزة البلوتوث منخفضة الطاقة؛ نستخدمه لهذا الغرض فقط ولا نقرأ موقعك ولا نرسله.</p>
   <h2>أغراض الاستخدام</h2>
-  <p>تشغيل الحساب، مزامنة البيانات، تقديم تشخيص إرشادي، مراجعة عروض الورش، عرض السجل الصحي للسيارة، تشغيل سوق القطع، التحقق من الدفع، منع الإساءة، واكتشاف الأخطاء.</p>
+  <p>تشغيل الحساب ومزامنة بياناتك بين أجهزتك، تقديم تشخيص إرشادي، مراجعة عروض الورش، عرض السجل الصحي للسيارة، إرسال تذكيرات الصيانة، تطبيق الحد الشهري المجاني، منع الإساءة، واكتشاف الأخطاء وإصلاحها.</p>
   <h2>الخدمات التي نعتمد عليها</h2>
-  <ul><li><strong>Google Firebase Authentication وCloud Firestore:</strong> المصادقة وتخزين بيانات التطبيق.</li><li><strong>Google Gemini:</strong> معالجة طلبات التشخيص ومراجعة الإصلاح عند ضبطه كمزود التشغيل. يدعم الخادم مزود Anthropic فقط إذا تم اختياره صراحة في الإعدادات؛ لا يتم الانتقال إليه تلقائيًا من Gemini.</li><li><strong>Moyasar:</strong> إنشاء الفواتير والتحقق من حالة الدفع.</li><li><strong>Render وGitHub Pages/النطاق الخاص:</strong> استضافة API والواجهة العامة.</li></ul>
+  <ul>
+    <li><strong>Google Firebase Authentication وCloud Firestore:</strong> تسجيل الدخول (ويشمل رمز التحقق عبر الرسائل القصيرة وإجراءات Google لمنع إساءة الاستخدام) وتخزين بيانات التطبيق.</li>
+    <li><strong>Google Gemini:</strong> معالجة طلبات التشخيص ومراجعة عروض الورش؛ يستلم وصف الأعراض وأكواد OBD وبيانات السيارة والصورة الاختيارية عند إرسال الطلب. يدعم الخادم مزود Anthropic فقط إذا تم اختياره صراحة في الإعدادات؛ لا يتم الانتقال إليه تلقائيًا من Gemini.</li>
+    <li><strong>Render:</strong> استضافة خادم التطبيق (API).</li>
+    <li><strong>GitHub Pages والنطاق الخاص:</strong> استضافة هذه الصفحات والنسخة الويب.</li>
+  </ul>
   <h2>المشاركة والحماية</h2>
-  <p>نشارك الحد الأدنى اللازم مع مقدمي الخدمات أعلاه لتشغيل الميزة المطلوبة. بيانات تواصل البائع لا تظهر في قوائم القطع العامة؛ لا يمكن طلبها إلا بعد تسجيل الدخول وإجراء صريح، مع تطبيق حدود طلبات. نستخدم المصادقة والتحقق من الصلاحيات وتحديد معدل الطلبات وحجب الأسرار من السجلات.</p>
-  <h2>الاحتفاظ والحذف</h2>
-  <p>نحتفظ ببيانات الحساب طوال مدة استخدام الخدمة. عند اكتمال حذف الحساب نحذف بيانات الحساب والسيارات والتشخيص والصيانة والإصلاح وإعلانات القطع والتقييمات المرتبطة به، وننزع هوية المستخدم وبيانات التواصل من الطلبات المشتركة. قد تبقى علامة أمان خالية من الملف الشخصي لمدة تصل إلى 24 ساعة لمنع رموز الدخول القديمة من إعادة إنشاء البيانات. وقد نحتفظ بسجلات مالية محدودة ومنزوعة الارتباط المباشر بالحساب لمدة تصل إلى 7 سنوات للالتزامات النظامية والمحاسبية ومنع النزاعات.</p>
-  <p>يمكن طلب الحذف من الإعدادات داخل التطبيق أو من <a href="delete-account.html">صفحة حذف الحساب</a>. قد نطلب مصادقة حديثة لمنع حذف الحساب دون إذن.</p>
+  <p>نشارك الحد الأدنى اللازم مع مقدمي الخدمات أعلاه لتشغيل الميزة التي تطلبها، ولا نشارك بياناتك لأغراض إعلانية. نستخدم المصادقة والتحقق من الصلاحيات وتحديد معدل الطلبات وحجب الأسرار من السجلات، وتنتقل البيانات بين التطبيق والخادم عبر اتصال مشفّر (HTTPS).</p>
+  <h2 id="retention-deletion">الاحتفاظ والحذف</h2>
+  <p>نحتفظ ببيانات حسابك طوال مدة استخدامك للخدمة. يمكنك حذف تشخيص من السجل في أي وقت. نُعيد استخدام نتيجة تشخيص مطابقة لطلبك لمدة تصل إلى 7 أيام لتسريع الرد، وتُحذف هذه النسخة مع حسابك.</p>
+  <p>عند اكتمال حذف الحساب نحذف حسابك وسياراتك وسجل التشخيص والصيانة والتذكيرات والإصلاحات ومراجعات عروض الورش وعدّاد الاستخدام. وإن كانت لديك بيانات من نسخ سابقة أو تجريبية (مثل إعلانات قطع أو تقييمات أو اشتراك أو طلبات) فتُحذف أو تُنزع هويتك منها كذلك. قد تبقى علامة أمان خالية من الملف الشخصي لمدة تصل إلى 24 ساعة (وقد يتأخر حذفها الفعلي قليلًا) لمنع رموز الدخول القديمة من إعادة إنشاء البيانات. وقد نحتفظ بسجلات مالية محدودة ومنزوعة الارتباط المباشر بالحساب لمدة تصل إلى 7 سنوات للالتزامات النظامية والمحاسبية، إن وُجدت لديك مدفوعات من نسخ سابقة.</p>
+  <p>يمكن طلب الحذف من التطبيق: الإعدادات ← «الخصوصية والحساب» ← «حذف حسابي»، أو من <a href="delete-account.html">صفحة حذف الحساب</a>. قد نطلب مصادقة حديثة لمنع حذف الحساب دون إذن.</p>
   <h2>حقوقك والتواصل</h2>
   <p>يمكنك طلب الوصول أو التصحيح أو الحذف أو الاستفسار عبر <a href="mailto:tv.4735@gmail.com">tv.4735@gmail.com</a>.</p>
 
   <section class="en" lang="en">
     <h1>Smart Car Check Privacy Policy</h1>
-    <p><small>Last updated: October 13, 2026</small></p>
-    <div class="card"><strong>Summary:</strong> We use your data to authenticate you, store vehicle records, provide diagnostics and repair-review features, operate the parts marketplace, and manage subscriptions. We do not sell personal data.</div>
+    <p><small>Last updated: November 16, 2026 · Version 1.0.2</small></p>
+    <div class="card"><strong>Summary:</strong> We use your data to sign you in, store your vehicles and their records, provide AI-assisted diagnostic guidance and workshop-quote reviews, and remind you of maintenance. We do not sell personal data, and the app contains no advertising, analytics, or third-party crash-reporting tools.</div>
     <h2>Data we process</h2>
-    <ul><li>Your Firebase account identifier and the phone number or email used for authentication.</li><li>Vehicles, diagnoses, maintenance, repairs, and verification records.</li><li>Symptom descriptions, OBD codes, and optional images. Voice input is converted to text on the device; the current backend does not store an audio recording.</li><li>Parts listings, seller-provided contact details, orders, and ratings.</li><li>Subscription state, invoice identifiers, and payment status. Smart Car Check does not receive complete card details.</li><li>Limited technical and security logs such as request time, route, status, and request ID. Authentication tokens and phone numbers are redacted from application logs.</li></ul>
-    <h2>Why we use data</h2><p>To operate accounts and synchronization, provide guidance and repair reviews, maintain vehicle history, run the marketplace, verify payments, prevent abuse, and troubleshoot failures.</p>
-    <h2>Service providers</h2><ul><li><strong>Google Firebase Authentication and Cloud Firestore</strong> for authentication and storage.</li><li><strong>Google Gemini</strong> for diagnosis and repair-review processing when selected in production. Anthropic is supported only when explicitly configured and is not an automatic fallback from Gemini.</li><li><strong>Moyasar</strong> for invoices and payment verification.</li><li><strong>Render and GitHub Pages/custom domain</strong> for API and public-page hosting.</li></ul>
-    <h2>Sharing and security</h2><p>We share only what is necessary to provide a requested feature. Seller contact details are excluded from public parts lists and require an authenticated, explicit contact action protected by request limits. We use authentication, authorization, rate limits, and log redaction.</p>
-    <h2>Retention and deletion</h2><p>Account data is retained while you use the service. Completed account deletion removes account, vehicle, diagnosis, maintenance, repair, listing, and related rating data, and removes identity/contact data from shared orders. A profile-free security tombstone may remain for up to 24 hours to prevent old login tokens from recreating data. Limited de-identified financial records may be retained for up to seven years for legal, accounting, and dispute obligations.</p>
-    <p>Request deletion in the app settings or through the <a href="delete-account.html">account deletion page</a>. Recent authentication may be required to protect your account.</p>
+    <ul>
+      <li><strong>Account:</strong> your Firebase account identifier and the phone number or email you use to sign in.</li>
+      <li><strong>Your vehicles and records:</strong> vehicle details (make, model, year, odometer, and optionally VIN, engine and transmission type, and insurance, registration, and inspection expiry dates), diagnosis history, maintenance records and reminders, repairs, and repair verification.</li>
+      <li><strong>Diagnosis inputs:</strong> the symptom description you type, fault codes the app reads from an OBD device over Bluetooth, and an optional photo you take or choose. The photo is sent for analysis and is not saved in your history.</li>
+      <li><strong>“Before You Pay”:</strong> the workshop statement, proposed parts, price, and optional quote photo you enter, and the resulting review. The text and the review are saved; the photo is not.</li>
+      <li><strong>Usage counter:</strong> the number of diagnoses you ran this month, to apply the free monthly limit.</li>
+      <li><strong>On your device only:</strong> language, theme, and whether you finished onboarding. Maintenance reminders are scheduled as local notifications on your device.</li>
+      <li><strong>Limited technical and security logs:</strong> request time, route, status, duration, and request ID. Authentication tokens and phone numbers are redacted from application logs. Our hosting provider may process routine connection data (such as IP address) to operate the server.</li>
+    </ul>
+    <p>We do not collect your location. On Android 11 and earlier the system requires the location permission to scan for Bluetooth Low Energy devices; we use it only for that and never read or send your location.</p>
+    <h2>Why we use data</h2>
+    <p>To operate your account and sync your data across devices, provide diagnostic guidance, review workshop quotes, show your vehicle health record, send maintenance reminders, apply the free monthly limit, prevent abuse, and find and fix errors.</p>
+    <h2>Service providers</h2>
+    <ul>
+      <li><strong>Google Firebase Authentication and Cloud Firestore:</strong> sign-in (including SMS verification and Google’s abuse-prevention checks) and app data storage.</li>
+      <li><strong>Google Gemini:</strong> processes diagnosis and quote-review requests; it receives the symptom description, OBD codes, vehicle details, and the optional photo when you submit a request. Anthropic is supported only when explicitly configured and is not an automatic fallback from Gemini.</li>
+      <li><strong>Render:</strong> hosts the app server (API).</li>
+      <li><strong>GitHub Pages and our custom domain:</strong> host these pages and the web version.</li>
+    </ul>
+    <h2>Sharing and security</h2>
+    <p>We share only what is necessary with the providers above to provide the feature you request, and we do not share your data for advertising. We use authentication, authorization checks, rate limits, and log redaction, and data travels between the app and the server over an encrypted connection (HTTPS).</p>
+    <h2 id="retention-deletion-en">Retention and deletion</h2>
+    <p>We keep your account data while you use the service. You can delete a diagnosis from your history at any time. We may reuse the result of an identical request for up to 7 days to answer faster; that copy is deleted with your account.</p>
+    <p>When account deletion completes, we delete your account, vehicles, diagnosis, maintenance and reminder, repair, and quote-review records, and your usage counter. If you have data from earlier or test versions (such as parts listings, ratings, a subscription, or orders), it is deleted or de-identified as well. A profile-free security tombstone may remain for up to 24 hours (actual removal may lag slightly) to prevent old login tokens from recreating data. Limited financial records with no direct account identifier may be kept for up to seven years for legal and accounting obligations, if you made payments in earlier versions.</p>
+    <p>Request deletion in the app: Settings → “Privacy and account” → “Delete my account”, or through the <a href="delete-account.html">account deletion page</a>. Recent authentication may be required to protect your account.</p>
     <h2>Your rights and contact</h2><p>For access, correction, deletion, or questions, email <a href="mailto:tv.4735@gmail.com">tv.4735@gmail.com</a>.</p>
   </section>
 </main>
