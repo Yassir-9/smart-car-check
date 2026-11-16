@@ -19,8 +19,12 @@ class PartSearchSheet extends StatefulWidget {
 class _PartSearchSheetState extends State<PartSearchSheet> {
   late final Future<List<PartStore>?> _stores = PartSearchService.storesLoader();
 
+  /// The search term derived from the AI part name (English term in parentheses
+  /// when there is one), used for every link so stores get a clean term.
+  String get _term => searchTermFromPartName(widget.part);
+
   String get _query => buildPartSearchQuery(
-      part: widget.part,
+      part: _term,
       make: widget.car.brand,
       model: widget.car.model,
       year: widget.car.year);
@@ -37,7 +41,7 @@ class _PartSearchSheetState extends State<PartSearchSheet> {
         padding: const EdgeInsets.only(bottom: 8),
         child: OutlinedButton(
           onPressed: () => _open(PartSearchService.storeUri(store.key,
-              part: widget.part,
+              part: _term,
               make: widget.car.brand,
               model: widget.car.model,
               year: widget.car.year)),

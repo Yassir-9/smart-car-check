@@ -163,4 +163,34 @@ void main() {
     expect(buildPartSearchQuery(part: 'Oil filter', make: 'Toyota', model: 'Camry', year: 2020),
         'Toyota Camry 2020 Oil filter');
   });
+
+  group('searchTermFromPartName', () {
+    test('uses only the Latin text inside parentheses', () {
+      expect(searchTermFromPartName('شمعات احتراق (Spark Plugs)'), 'Spark Plugs');
+      expect(searchTermFromPartName('كراسي محرك (Engine Mounts)'), 'Engine Mounts');
+      expect(searchTermFromPartName('حساس تدفق الهواء (MAF Sensor)'), 'MAF Sensor');
+    });
+    test('without Latin text, keeps the Arabic name and drops the parentheses', () {
+      expect(searchTermFromPartName('شمعات احتراق'), 'شمعات احتراق');
+      expect(searchTermFromPartName('شمعات (احتراق)'), 'شمعات احتراق');
+      expect(searchTermFromPartName('مساعدين (أمامي) (خلفي)'), 'مساعدين أمامي خلفي');
+    });
+    test('several Latin segments: the first one wins', () {
+      expect(searchTermFromPartName('قطعة (Throttle Body) و(MAF Sensor)'), 'Throttle Body');
+      expect(searchTermFromPartName('قطعة (٢٠١٩) (Ignition Coils)'), 'Ignition Coils');
+    });
+    test('nested parentheses are flattened inside the outer one', () {
+      expect(searchTermFromPartName('كراسي (Engine Mounts (Front))'), 'Engine Mounts Front');
+      expect(searchTermFromPartName('(Spark (Plugs)'), 'Spark Plugs');
+    });
+    test('extra spaces are collapsed and an English-only name is kept', () {
+      expect(searchTermFromPartName('  شمعات   احتراق  (  Spark   Plugs  ) '), 'Spark Plugs');
+      expect(searchTermFromPartName('  Spark   Plugs '), 'Spark Plugs');
+    });
+    test('empty or blank text gives an empty term', () {
+      expect(searchTermFromPartName(''), '');
+      expect(searchTermFromPartName('   '), '');
+      expect(searchTermFromPartName('()'), '');
+    });
+  });
 }
