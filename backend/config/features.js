@@ -6,6 +6,8 @@ function flag(name, env = process.env) {
 
 const isSubscriptionsEnabled = (env) => flag('SUBSCRIPTIONS_ENABLED', env);
 const isMarketplaceWritesEnabled = (env) => flag('MARKETPLACE_WRITES_ENABLED', env);
+// /ask-expert is not used by the current app (only a dead legacy screen calls it).
+const isAskExpertEnabled = (env) => flag('ASK_EXPERT_ENABLED', env);
 
 // Express middleware: reject the request with 403 + FEATURE_DISABLED when the
 // feature is off. `isEnabled` is injectable for tests.
@@ -16,4 +18,4 @@ function requireFeature(isEnabled, localizedError) {
   };
 }
 
-module.exports = { isSubscriptionsEnabled, isMarketplaceWritesEnabled, requireFeature };
+module.exports = { isSubscriptionsEnabled, isMarketplaceWritesEnabled, isAskExpertEnabled, requireFeature };

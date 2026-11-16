@@ -164,3 +164,22 @@ test('users are counted separately and input errors do not consume a slot', () =
   assert.equal(empty.status, 400);
   assert.equal(usage('c').repairReviewCount, undefined);
 }));
+
+test('/ask-expert is disabled by default (403 FEATURE_DISABLED) and opens only with ASK_EXPERT_ENABLED=true', () => withServer(async (base) => {
+  delete process.env.ASK_EXPERT_ENABLED;
+  const post = (locale) => fetch(`${base}/api/ask-expert`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-test-uid': 'u1', 'x-app-locale': locale },
+    body: JSON.stringify({ question: 'why?', car: { brand: 'Toyota' } }),
+  });
+  const off = await post('en');
+  assert.equal(off.status, 403);
+  assert.equal((await off.json()).code, 'FEATURE_DISABLED');
+  assert.equal((await post('ar')).status, 403);
+  process.env.ASK_EXPERT_ENABLED = 'true';
+  try {
+    assert.notEqual((await post('en')).status, 403);
+  } finally {
+    delete process.env.ASK_EXPERT_ENABLED;
+  }
+}));

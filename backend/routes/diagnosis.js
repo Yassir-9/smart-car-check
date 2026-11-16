@@ -18,7 +18,8 @@ const { getFreeMonthlyLimit, getFreeMonthlyBeforeYouPayLimit } = require('../con
 const { limitReachedBody } = require('../services/usage/limitResponse');
 const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
 const { DIAGNOSIS_FIELD, REPAIR_REVIEW_FIELD, reserveUsage, releaseUsage } = require('../services/usage/usageCounter');
-const { isMarketplaceWritesEnabled } = require('../config/features');
+const { isMarketplaceWritesEnabled, isAskExpertEnabled, requireFeature } = require('../config/features');
+const { localizedError } = require('../utils/localizedResponse');
 
 // If the first AI round trip already took this long, do not start a second one.
 const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
@@ -367,7 +368,8 @@ router.patch('/history/:id/feedback', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/ask-expert', verifyToken, aiLimiter, async (req, res) => {
+// Off by default (ASK_EXPERT_ENABLED=true to enable): no live screen uses it.
+router.post('/ask-expert', verifyToken, requireFeature(() => isAskExpertEnabled(), localizedError), aiLimiter, async (req, res) => {
   try {
     const { question, diagnosis, car } = req.body;
     if (!question || !question.trim()) {
