@@ -213,6 +213,13 @@ class _BeforeYouPayScreenState extends State<BeforeYouPayScreen> {
               'image': {'data': base64Encode(_image!), 'media_type': _mime},
           }));
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (response.statusCode == 402 &&
+          decoded is Map &&
+          decoded['error'] is String) {
+        // Monthly free limit reached: show the server's (localized) message.
+        if (mounted) setState(() => _error = decoded['error'] as String);
+        return;
+      }
       if (response.statusCode != 200 || decoded is! Map) throw Exception();
       if (!mounted) return;
       await Navigator.pushReplacement(

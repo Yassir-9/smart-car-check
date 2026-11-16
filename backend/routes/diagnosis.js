@@ -14,9 +14,10 @@ const { generateRepairReview } = require('../services/repairReview/repairReviewS
 const { aiLimiter, searchLimiter } = require('../middleware/rateLimit');
 const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/marketplace/partPrivacy');
 
-const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
+const { getFreeMonthlyLimit, getFreeMonthlyBeforeYouPayLimit } = require('../config/limits');
+const { limitReachedBody } = require('../services/usage/limitResponse');
 const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
-const { DIAGNOSIS_FIELD, reserveUsage, releaseUsage } = require('../services/usage/usageCounter');
+const { DIAGNOSIS_FIELD, REPAIR_REVIEW_FIELD, reserveUsage, releaseUsage } = require('../services/usage/usageCounter');
 const { isMarketplaceWritesEnabled } = require('../config/features');
 
 // If the first AI round trip already took this long, do not start a second one.
@@ -24,7 +25,7 @@ const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
 
 // Active subscribers are unlimited. Everyone else reserves one slot of the monthly
 // counter atomically; the caller must release it (releaseQuietly) if the request fails.
-async function checkAndTrackUsage(uid) {
+async function checkAndTrackUsage(uid, field = DIAGNOSIS_FIELD, limit = getFreeMonthlyLimit()) {
   const subDoc = await db.collection('users').doc(uid)
     .collection('subscription').doc('current').get();
   const sub = subDoc.exists ? subDoc.data() : null;
@@ -35,7 +36,7 @@ async function checkAndTrackUsage(uid) {
     return { allowed: true, isActive: true };
   }
 
-  const reservation = await reserveUsage(db, uid, DIAGNOSIS_FIELD, getFreeMonthlyLimit());
+  const reservation = await reserveUsage(db, uid, field, limit);
   if (!reservation.allowed) {
     return { allowed: false, isActive: false, usageCount: reservation.count };
   }
@@ -197,15 +198,7 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
       : await checkAndTrackUsage(req.uid);
     reservation = usageCheck.reservation || null;
     if (!usageCheck.allowed) {
-      return res.status(402).json({
-        code: 'FREE_DIAGNOSIS_LIMIT_REACHED',
-        error: locale === 'en'
-          ? "You have reached this month's free diagnosis limit. It renews at the start of next month."
-          : 'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.',
-        subscriptionRequired: false,
-        freeUsageLimit: getFreeMonthlyLimit(),
-        limitResetsAt: nextMonthStartIso(),
-      });
+      return res.status(402).json(limitReachedBody(locale, getFreeMonthlyLimit(), 'diagnosis'));
     }
 
     const obdContext = localObdContext(normalizedObdCodes);
@@ -441,6 +434,7 @@ router.post('/parts/external-search', verifyToken, searchLimiter, async (req, re
 });
 
 async function repairReviewHandler(req, res) {
+  let reservation = null;
   try {
     const { workshopStatement, proposedPart, proposedParts, quotedPrice, car, diagnosis, obd_codes, image: rawImage, openIssues, maintenanceHistory, repairHistory } = req.body;
     const locale = normalizeLocale(req.body.locale);
@@ -456,6 +450,17 @@ async function repairReviewHandler(req, res) {
         error: locale === 'en' ? 'Enter the workshop statement, proposed parts, or a quote image' : 'أدخل كلام الورشة أو القطع المقترحة أو صورة العرض',
       });
     }
+    // Monthly free limit for quote reviews (separate counter from diagnoses).
+    const bypassed = isDevelopmentUsageLimitBypassEnabled() || isQaUsageLimitBypassEnabled(req.uid);
+    const reviewLimit = getFreeMonthlyBeforeYouPayLimit();
+    const usageCheck = bypassed
+      ? { allowed: true, isActive: false, bypassed: true }
+      : await checkAndTrackUsage(req.uid, REPAIR_REVIEW_FIELD, reviewLimit);
+    reservation = usageCheck.reservation || null;
+    if (!usageCheck.allowed) {
+      return res.status(402).json(limitReachedBody(locale, reviewLimit, 'quote_review'));
+    }
+
     const codes = normalizeObdCodes(obd_codes);
     const numericPrice = quotedPrice === null || quotedPrice === undefined || String(quotedPrice).trim() === ''
       ? null
@@ -479,7 +484,13 @@ async function repairReviewHandler(req, res) {
       quote_image_attached: !!image,
     };
     const result = await generateRepairReview({ provider: getAiProvider(), input, image, locale });
-    if (!result.analysis_complete) return res.status(200).json(result);
+    if (!result.analysis_complete) {
+      // An incomplete review is not counted.
+      await releaseQuietly(reservation);
+      reservation = null;
+      return res.status(200).json(result);
+    }
+    reservation = null; // completed: the reserved slot stays used
     const reviewId = Date.now().toString();
     result.review_id = reviewId;
     try {
@@ -496,6 +507,7 @@ async function repairReviewHandler(req, res) {
     }
     return res.json(result);
   } catch (error) {
+    await releaseQuietly(reservation);
     logger.error('Before-you-pay analysis failed', error, { requestId: req.requestId });
     const locale = normalizeLocale(req.body?.locale);
     return res.status(500).json({

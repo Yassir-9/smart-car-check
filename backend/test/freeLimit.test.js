@@ -30,8 +30,16 @@ test('no hard-coded free limit remains in routes; one source is used', () => {
 });
 
 test('limit-reached response mentions neither payment nor subscription', () => {
+  const { limitReachedBody } = require('../services/usage/limitResponse');
+  for (const kind of ['diagnosis', 'quote_review']) {
+    for (const locale of ['en', 'ar']) {
+      const body = limitReachedBody(locale, 7, kind);
+      assert.equal(body.code, 'FREE_DIAGNOSIS_LIMIT_REACHED');
+      assert.equal(body.subscriptionRequired, false);
+      assert.equal(body.freeUsageLimit, 7);
+      assert.doesNotMatch(body.error, /subscri|pay|اشتراك|دفع/i);
+    }
+  }
   const src = fs.readFileSync(path.join(__dirname, '..', 'routes', 'diagnosis.js'), 'utf8');
-  const block = src.slice(src.indexOf("status(402)"), src.indexOf("limitResetsAt"));
-  assert.doesNotMatch(block, /subscri(be|ption)(?!Required)|pay|اشتراك|دفع/i);
-  assert.match(block, /subscriptionRequired: false/);
+  assert.match(src, /status\(402\)\.json\(limitReachedBody\(locale, getFreeMonthlyLimit\(\), 'diagnosis'\)\)/);
 });
