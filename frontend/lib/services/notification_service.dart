@@ -28,7 +28,6 @@ class NotificationService {
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       await androidImpl?.requestNotificationsPermission();
-      await androidImpl?.requestExactAlarmsPermission();
     }
   }
 
@@ -39,7 +38,6 @@ class NotificationService {
     required String reminderId,
     required String title,
     required DateTime dueDate,
-    bool inexact = false,
   }) async {
     if (!_isSupportedPlatform) return;
     await cancelReminder(reminderId);
@@ -71,11 +69,9 @@ class NotificationService {
       body: title,
       scheduledDate: scheduledDate,
       notificationDetails: platformDetails,
-      androidScheduleMode: _isAndroid
-          ? (inexact
-              ? AndroidScheduleMode.inexactAllowWhileIdle
-              : AndroidScheduleMode.exactAllowWhileIdle)
-          : AndroidScheduleMode.inexactAllowWhileIdle,
+      // Reminders are day-level (09:00); inexact scheduling needs no exact-alarm
+      // permission and avoids the SCHEDULE_EXACT_ALARM Play policy declaration.
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     );
   }
 
@@ -87,7 +83,6 @@ class NotificationService {
         reminderId: 'repair-verification-$repairId',
         title: 'هل اختفت المشكلة بعد الإصلاح؟ افتح Smart Car Check للتحقق.',
         dueDate: DateTime.now().add(Duration(days: days)),
-        inexact: true,
       );
 
   static Future<void> cancelReminder(String reminderId) async {
