@@ -56,3 +56,8 @@ test('order checkout and seller rating writes are behind the marketplace flag', 
   assert.match(read('orders.js'), /router\.post\('\/orders\/checkout', verifyToken, requireFeature\(\(\) => isMarketplaceWritesEnabled\(\)/);
   assert.match(read('ratings.js'), /router\.post\('\/sellers\/:id\/rating', verifyToken, requireFeature\(\(\) => isMarketplaceWritesEnabled\(\)/);
 });
+
+test('diagnosis skips the parts collection read when the marketplace is off', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'routes', 'diagnosis.js'), 'utf8');
+  assert.match(src, /if \(isMarketplaceWritesEnabled\(\)\) \{\s*parsed\.matched_parts = await findMatchingParts/);
+});

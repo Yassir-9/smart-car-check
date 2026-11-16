@@ -16,6 +16,7 @@ const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/mar
 
 const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
 const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
+const { isMarketplaceWritesEnabled } = require('../config/features');
 
 // If the first AI round trip already took this long, do not start a second one.
 const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
@@ -273,7 +274,10 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
 
     const parsed = addLegacyAliases(diagnosis, locale);
     parsed.obd_analysis = diagnosis.obd_codes;
-    parsed.matched_parts = await findMatchingParts(diagnosis.title, car?.brand);
+    // Marketplace off: skip the full parts-collection read and omit matched_parts.
+    if (isMarketplaceWritesEnabled()) {
+      parsed.matched_parts = await findMatchingParts(diagnosis.title, car?.brand);
+    }
     parsed.cache_hit = cacheHit;
 
     // البحث الخارجي صار عند الطلب فقط (زر يدوي بالتطبيق) لتوفير تكلفة API
