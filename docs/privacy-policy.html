@@ -28,7 +28,7 @@
   <h2>الخدمات التي نعتمد عليها</h2>
   <ul>
     <li><strong>Google Firebase Authentication وCloud Firestore:</strong> تسجيل الدخول (ويشمل رمز التحقق عبر الرسائل القصيرة وإجراءات Google لمنع إساءة الاستخدام) وتخزين بيانات التطبيق.</li>
-    <li><strong>Google Gemini:</strong> معالجة طلبات التشخيص ومراجعة عروض الورش؛ يستلم وصف الأعراض وأكواد OBD وبيانات السيارة والصورة الاختيارية عند إرسال الطلب. يدعم الخادم مزود Anthropic فقط إذا تم اختياره صراحة في الإعدادات؛ لا يتم الانتقال إليه تلقائيًا من Gemini.</li>
+    <li><strong>مزوّد خدمة ذكاء اصطناعي خارجي (طرف ثالث):</strong> عند طلبك تشخيصًا أو مراجعة لعرض ورشة نرسل إليه: وصف الأعراض، وأكواد OBD، وبيانات السيارة (الماركة والموديل والسنة وقراءة العداد)، والصورة الاختيارية. وفي «قبل ما تدفع للورشة» نرسل أيضًا ما تدخله من كلام الورشة والقطع المقترحة والسعر وصورة العرض، وملخص التشخيص السابق، وما لديك من أعطال مفتوحة وسجل صيانة وإصلاح حديث (حتى 10 عناصر من كل نوع). الغرض هو توليد التشخيص أو المراجعة فقط، ولا نستخدم هذا المزوّد للإعلانات ولا نبيع بياناتك.</li>
     <li><strong>Render:</strong> استضافة خادم التطبيق (API).</li>
     <li><strong>GitHub Pages والنطاق الخاص:</strong> استضافة هذه الصفحات والنسخة الويب.</li>
   </ul>
@@ -61,7 +61,7 @@
     <h2>Service providers</h2>
     <ul>
       <li><strong>Google Firebase Authentication and Cloud Firestore:</strong> sign-in (including SMS verification and Google’s abuse-prevention checks) and app data storage.</li>
-      <li><strong>Google Gemini:</strong> processes diagnosis and quote-review requests; it receives the symptom description, OBD codes, vehicle details, and the optional photo when you submit a request. Anthropic is supported only when explicitly configured and is not an automatic fallback from Gemini.</li>
+      <li><strong>A third-party AI service provider:</strong> when you request a diagnosis or a workshop-quote review, we send it the symptom description, OBD codes, vehicle details (make, model, year, and odometer), and the optional photo. For “Before You Pay” we also send what you enter (the workshop statement, proposed parts, price, and quote photo), a summary of the previous diagnosis, and your open issues and recent maintenance and repair history (up to 10 items of each kind). The purpose is only to generate the diagnosis or review; we do not use this provider for advertising and we do not sell your data.</li>
       <li><strong>Render:</strong> hosts the app server (API).</li>
       <li><strong>GitHub Pages and our custom domain:</strong> host these pages and the web version.</li>
     </ul>
