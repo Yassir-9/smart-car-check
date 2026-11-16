@@ -28,6 +28,11 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
 
   List<String> _list(String key) =>
       List<String>.from(widget.result[key] ?? const []);
+  /// Questions generated with the diagnosis; blank entries are dropped.
+  List<String> get _workshopQuestions => _list('workshop_questions')
+      .map((q) => q.trim())
+      .where((q) => q.isNotEmpty)
+      .toList();
   String get _severity =>
       widget.result['severity_code'] ?? widget.result['severity'] ?? 'medium';
   Color get _severityColor => switch (_severity) {
@@ -166,6 +171,31 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
       }
     }
   }
+
+  /// Questions generated with the diagnosis, collapsed by default; hidden when empty.
+  Widget _askYourWorkshop(AppLocalizations l10n) => Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+          key: const Key('ask-your-workshop'),
+          leading: const Icon(Icons.question_answer_outlined,
+              size: 22, color: AppColors.accent),
+          title: Text(l10n.askYourWorkshop,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final question in _workshopQuestions)
+              Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('•  '),
+                        Expanded(
+                            child: Text(question,
+                                style: const TextStyle(height: 1.5)))
+                      ])),
+          ]));
 
   Widget _partsSection(AppLocalizations l10n) => Card(
       child: Padding(
@@ -338,6 +368,10 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
             _section(l10n.checksFirst, _list('recommended_checks'),
                 Icons.fact_check_outlined),
             const SizedBox(height: 12),
+            if (_workshopQuestions.isNotEmpty) ...[
+              _askYourWorkshop(l10n),
+              const SizedBox(height: 12),
+            ],
             if (FeatureFlags.partsGuideEnabled &&
                 _list('possible_parts').isNotEmpty) ...[
               _partsSection(l10n),
