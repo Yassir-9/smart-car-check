@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../config/feature_flags.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
@@ -486,11 +487,13 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
               fontFamily: 'monospace',
             ),
           ),
-          trailing: IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: AppLocalizations.of(context).findRequiredPart,
-            onPressed: () => _searchParts(code),
-          ),
+          trailing: FeatureFlags.marketplaceEnabled
+              ? IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: AppLocalizations.of(context).findRequiredPart,
+                  onPressed: () => _searchParts(code),
+                )
+              : null,
         ),
       );
 }
