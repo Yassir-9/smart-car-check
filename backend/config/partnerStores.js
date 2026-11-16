@@ -19,6 +19,9 @@ const STORES = Object.freeze({
     // Verified in a browser on 2026-11-17: searching on speero.net opens
     // https://speero.net/search?q=<text>
     searchUrl: (q) => `https://speero.net/search?q=${encodeURIComponent(q)}`,
+    // Speero's search matches the part name only: adding make/model/year made the
+    // results irrelevant (e.g. a tow hook for "Toyota Land Cruiser 2019 spark plugs").
+    queryFields: ['part'],
     affiliateEnv: 'AFFILIATE_SPEERO',
     enabledByDefault: true,
   },

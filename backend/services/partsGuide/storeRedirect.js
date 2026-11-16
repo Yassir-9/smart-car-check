@@ -37,7 +37,7 @@ function parseGuideQuery(query = {}, now = new Date()) {
   }
   const q = [values.make, values.model, values.year, values.part].filter(Boolean).join(' ');
   if (q.length > MAX_QUERY_LENGTH) return fail('PARAMETER_TOO_LONG');
-  return { ok: true, q };
+  return { ok: true, q, fields: values };
 }
 
 // Reads "key=value&key2=value2" from the store's AFFILIATE_* variable, keeping only
@@ -61,10 +61,16 @@ function hostsWithSearch(env) {
 }
 
 // Returns { ok:true, url } or { ok:false, code }. `store` must be an enabled key.
-function buildDestination(storeKey, q, env = process.env) {
+// `input` is the result of parseGuideQuery ({ q, fields }) or, for convenience, a plain
+// string. A store that declares `queryFields` only receives those fields.
+function buildDestination(storeKey, input, env = process.env) {
   if (typeof storeKey !== 'string' || !Object.hasOwn(STORES, storeKey)) return fail('UNKNOWN_STORE');
   if (!enabledStoreKeys(env).includes(storeKey)) return fail('STORE_DISABLED');
   const store = STORES[storeKey];
+  const full = typeof input === 'string' ? input : input.q;
+  const q = store.queryFields && input.fields
+    ? store.queryFields.map((f) => input.fields[f]).filter(Boolean).join(' ')
+    : full;
   const base = store.searchUrl
     ? store.searchUrl(q, { siteHosts: hostsWithSearch(env) })
     : `https://${store.host}/`;
