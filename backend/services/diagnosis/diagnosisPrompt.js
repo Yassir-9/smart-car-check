@@ -22,6 +22,10 @@ const SAFETY_INSTRUCTIONS_EN = [
 const SUMMARY_VOICE = 'اكتب حقل summary موجّهًا إلى القارئ مباشرة بصيغة المخاطَب (مثل: «ذكرتَ أن...» أو «الشكوى المسجّلة: ...»)، ولا تتحدث عنه بصيغة الغائب مثل «يشتكي المستخدم».';
 const SUMMARY_VOICE_EN = 'Write the summary field addressed directly to the reader (for example "You mentioned that..." or "Recorded complaint: ..."), and never refer to them in the third person such as "The user complains".';
 
+// possible_parts names are used as store search terms, so they need the English term.
+const PARTS_TERMS = 'في possible_parts اكتب اسم كل قطعة بالعربية متبوعًا بالمصطلح الفني الإنجليزي بين قوسين (مثل: «شمعات احتراق (Spark Plugs)»).';
+const PARTS_TERMS_EN = 'In possible_parts, write each part with its standard English technical term (for example "Spark Plugs", "Engine Mounts", "MAF Sensor").';
+
 function normalizeLocale(locale) {
   return String(locale || '').toLowerCase() === 'en' ? 'en' : 'ar';
 }
@@ -29,8 +33,8 @@ function normalizeLocale(locale) {
 function buildDiagnosisPrompts({ car, description, obdContext, hasImage, schemaDescription, locale }) {
   const language = normalizeLocale(locale);
   const system = language === 'en'
-    ? `You are an automotive diagnostic guidance assistant. Return JSON only according to the schema. ${SAFETY_INSTRUCTIONS_EN} ${SUMMARY_VOICE_EN} The local OBD database is authoritative for known code definitions and must not be contradicted. An unknown local code is an unconfirmed possible interpretation. Write all user-facing explanations and recommendations in English while preserving JSON keys, DTC codes, numbers, units, and technical identifiers. Schema: ${schemaDescription}`
-    : `أنت محلل أعطال سيارات إرشادي. أرجع JSON فقط حسب المخطط. ${SAFETY_INSTRUCTIONS} ${SUMMARY_VOICE} قاعدة OBD المحلية هي المرجع الملزم لتعريف الأكواد المعروفة ولا يجوز تغييرها. الكود غير المعروف محليًا تفسيره احتمال غير مؤكد. اكتب جميع الشروحات والتوصيات الظاهرة للمستخدم بالعربية مع الحفاظ على مفاتيح JSON ورموز DTC والأرقام والوحدات والمصطلحات الفنية. المخطط: ${schemaDescription}`;
+    ? `You are an automotive diagnostic guidance assistant. Return JSON only according to the schema. ${SAFETY_INSTRUCTIONS_EN} ${SUMMARY_VOICE_EN} ${PARTS_TERMS_EN} The local OBD database is authoritative for known code definitions and must not be contradicted. An unknown local code is an unconfirmed possible interpretation. Write all user-facing explanations and recommendations in English while preserving JSON keys, DTC codes, numbers, units, and technical identifiers. Schema: ${schemaDescription}`
+    : `أنت محلل أعطال سيارات إرشادي. أرجع JSON فقط حسب المخطط. ${SAFETY_INSTRUCTIONS} ${SUMMARY_VOICE} ${PARTS_TERMS} قاعدة OBD المحلية هي المرجع الملزم لتعريف الأكواد المعروفة ولا يجوز تغييرها. الكود غير المعروف محليًا تفسيره احتمال غير مؤكد. اكتب جميع الشروحات والتوصيات الظاهرة للمستخدم بالعربية مع الحفاظ على مفاتيح JSON ورموز DTC والأرقام والوحدات والمصطلحات الفنية. المخطط: ${schemaDescription}`;
   const prompt = JSON.stringify({
     vehicle: {
       make: car?.brand || car?.make || null,
@@ -48,4 +52,4 @@ function buildDiagnosisPrompts({ car, description, obdContext, hasImage, schemaD
   return { system, prompt };
 }
 
-module.exports = { buildDiagnosisPrompts, normalizeLocale, SAFETY_INSTRUCTIONS, SAFETY_INSTRUCTIONS_EN, SUMMARY_VOICE, SUMMARY_VOICE_EN };
+module.exports = { buildDiagnosisPrompts, normalizeLocale, SAFETY_INSTRUCTIONS, SAFETY_INSTRUCTIONS_EN, SUMMARY_VOICE, SUMMARY_VOICE_EN, PARTS_TERMS, PARTS_TERMS_EN };
