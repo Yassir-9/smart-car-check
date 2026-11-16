@@ -131,6 +131,7 @@
   "obdScanExpired": "The last OBD scan is more than 30 minutes old and will not be used. Rescan.",
   "ignoreObdCodes": "Ignore codes",
   "rescanObd": "Rescan",
+  "historyLoadMore": "Load more",
   "manageObd": "Manage OBD connection",
   "symptoms": "Symptoms",
   "symptomsHint": "Example: vibration while idling or noise during acceleration",

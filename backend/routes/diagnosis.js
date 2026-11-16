@@ -15,6 +15,7 @@ const { aiLimiter, searchLimiter } = require('../middleware/rateLimit');
 const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/marketplace/partPrivacy');
 
 const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
+const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
 
 // If the first AI round trip already took this long, do not start a second one.
 const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
@@ -56,11 +57,10 @@ async function saveToHistory(uid, entry) {
   }
 }
 
-async function getUserHistory(uid) {
+async function getUserHistory(uid, page) {
   try {
-    const snapshot = await db.collection('users').doc(uid)
-      .collection('history').orderBy('timestamp', 'desc').get();
-    return snapshot.docs.map((doc) => sanitizeDiagnosisHistoryEntry(doc.data()));
+    const entries = await readHistoryPage(db, uid, page);
+    return entries.map((entry) => sanitizeDiagnosisHistoryEntry(entry));
   } catch (e) {
     logger.error('Failed to load diagnosis history', e);
     return [];
@@ -320,8 +320,9 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
 });
 
 // جلب سجل الحوادث (خاص بالمستخدم المسجّل فقط)
+// ?limit=50 (max 100) &before=<timestamp of the last item received> for the next page.
 router.get('/history', verifyToken, async (req, res) => {
-  const history = await getUserHistory(req.uid);
+  const history = await getUserHistory(req.uid, parseHistoryQuery(req.query));
   res.json(history);
 });
 

@@ -410,6 +410,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get rescanObd => 'إعادة المسح';
 
   @override
+  String get historyLoadMore => 'عرض المزيد';
+
+  @override
   String get manageObd => 'إدارة اتصال OBD';
 
   @override

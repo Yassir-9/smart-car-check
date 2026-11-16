@@ -860,6 +860,12 @@ abstract class AppLocalizations {
   /// **'إعادة المسح'**
   String get rescanObd;
 
+  /// No description provided for @historyLoadMore.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض المزيد'**
+  String get historyLoadMore;
+
   /// No description provided for @manageObd.
   ///
   /// In ar, this message translates to:

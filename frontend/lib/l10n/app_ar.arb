@@ -131,6 +131,7 @@
   "obdScanExpired": "مضى على آخر فحص OBD أكثر من 30 دقيقة ولن يُستخدم. أعد المسح.",
   "ignoreObdCodes": "تجاهل الأكواد",
   "rescanObd": "إعادة المسح",
+  "historyLoadMore": "عرض المزيد",
   "manageObd": "إدارة اتصال OBD",
   "symptoms": "الأعراض",
   "symptomsHint": "مثال: اهتزاز عند الوقوف أو صوت عند التسارع",

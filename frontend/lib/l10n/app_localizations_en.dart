@@ -420,6 +420,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rescanObd => 'Rescan';
 
   @override
+  String get historyLoadMore => 'Load more';
+
+  @override
   String get manageObd => 'Manage OBD connection';
 
   @override
