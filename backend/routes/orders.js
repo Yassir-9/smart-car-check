@@ -5,13 +5,14 @@ const { db } = require('../firebaseAdmin');
 const { toBuyerOrder, toSellerOrder } = require('../services/marketplace/partPrivacy');
 const { MOYASAR_BASE, authHeader, fetchVerifiedInvoice } = require('../utils/moyasar');
 const logger = require('../utils/logger');
+const { isMarketplaceWritesEnabled, requireFeature } = require('../config/features');
 const { checkoutLimiter } = require('../middleware/rateLimit');
 const { localizedError, localizedPaymentSuccess, requestLocale } = require('../utils/localizedResponse');
 
 const BACKEND_URL = 'https://car-ai-backend-7gpb.onrender.com';
 
 // إنشاء طلب شراء والانتقال لبوابة الدفع
-router.post('/orders/checkout', verifyToken, checkoutLimiter, async (req, res) => {
+router.post('/orders/checkout', verifyToken, requireFeature(() => isMarketplaceWritesEnabled(), localizedError), checkoutLimiter, async (req, res) => {
   try {
     const locale = requestLocale(req);
     const { partIds } = req.body;

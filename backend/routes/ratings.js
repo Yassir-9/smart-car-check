@@ -4,6 +4,7 @@ const verifyToken = require('../middleware/auth');
 const { db } = require('../firebaseAdmin');
 const logger = require('../utils/logger');
 const { localizedError } = require('../utils/localizedResponse');
+const { isMarketplaceWritesEnabled, requireFeature } = require('../config/features');
 
 // جلب متوسط تقييم بائع معيّن
 router.get('/sellers/:id/rating', async (req, res) => {
@@ -32,7 +33,7 @@ router.get('/sellers/:id/rating', async (req, res) => {
 });
 
 // إضافة أو تحديث تقييم بائع
-router.post('/sellers/:id/rating', verifyToken, async (req, res) => {
+router.post('/sellers/:id/rating', verifyToken, requireFeature(() => isMarketplaceWritesEnabled(), localizedError), async (req, res) => {
   try {
     const sellerId = req.params.id;
     const { rating, comment } = req.body;

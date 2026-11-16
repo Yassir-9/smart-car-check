@@ -50,3 +50,9 @@ test('payment-creating subscription route is behind the flag', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'routes', 'subscription.js'), 'utf8');
   assert.match(src, /router\.post\('\/subscribe', verifyToken, requireFeature\(\(\) => isSubscriptionsEnabled\(\)/);
 });
+
+test('order checkout and seller rating writes are behind the marketplace flag', () => {
+  const read = (f) => fs.readFileSync(path.join(__dirname, '..', 'routes', f), 'utf8');
+  assert.match(read('orders.js'), /router\.post\('\/orders\/checkout', verifyToken, requireFeature\(\(\) => isMarketplaceWritesEnabled\(\)/);
+  assert.match(read('ratings.js'), /router\.post\('\/sellers\/:id\/rating', verifyToken, requireFeature\(\(\) => isMarketplaceWritesEnabled\(\)/);
+});
