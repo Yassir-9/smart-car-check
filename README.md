@@ -61,7 +61,8 @@ ALLOWED_ORIGINS=https://yassir-9.github.io,http://localhost:8080
 - النموذج الاحتياطي لـ Gemini ثابت في `backend/services/ai/geminiProvider.js` وهو `gemini-3.6-flash`، ويُستخدم فقط بعد أول خطأ مؤقت (429 أو 5xx) من النموذج الأساسي.
 - تنبيه: النماذج `gemini-2.5-*` مصنّفة Deprecated في توثيق Google وتتحول طلباتها تلقائيًا إلى نماذج أخرى ابتداءً من 1 ديسمبر 2026، فلا تستخدمها. تحقق من القائمة الحالية في https://aistudio.google.com/docs/models قبل تغيير الاسم.
 - `GEMINI_ATTEMPT_TIMEOUT_MS` (افتراضي 25000): مهلة كل محاولة. `GEMINI_TOTAL_TIMEOUT_MS` (افتراضي 45000): السقف الإجمالي لطلب Gemini شاملًا إعادة المحاولة. `GEMINI_RETRY_BASE_MS` (افتراضي 1500): أساس التأخير التصاعدي (يُضاعف في كل محاولة وبحد أقصى 8 ثوانٍ).
-- `FREE_MONTHLY_LIMIT` (افتراضي 7)، و`SUBSCRIPTIONS_ENABLED` و`MARKETPLACE_WRITES_ENABLED` (الافتراضي معطّل؛ `true` للتفعيل).
+- `FREE_MONTHLY_LIMIT` (افتراضي 7)، و`SUBSCRIPTIONS_ENABLED` و`MARKETPLACE_WRITES_ENABLED` و`ASK_EXPERT_ENABLED` (الافتراضي معطّل؛ `true` للتفعيل).
+- `FREE_MONTHLY_BEFORE_YOU_PAY` (افتراضي 7): الحد الشهري المجاني لمراجعة عروض الورش (`/repair-review` و`/before-you-pay`)، بعدّاد منفصل عن التشخيصات. يُقرأ عند كل طلب؛ تغييره من Render لا يحتاج نشر كود جديد.
 - `GEMINI_API_KEY`: مطلوب عند استخدام Gemini.
 - `ANTHROPIC_API_KEY`: مطلوب فقط عند اختيار Anthropic.
 

@@ -14,19 +14,19 @@ const { generateRepairReview } = require('../services/repairReview/repairReviewS
 const { aiLimiter, searchLimiter } = require('../middleware/rateLimit');
 const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/marketplace/partPrivacy');
 
-const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
+const { getFreeMonthlyLimit, getFreeMonthlyBeforeYouPayLimit } = require('../config/limits');
+const { limitReachedBody } = require('../services/usage/limitResponse');
 const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
-const { isMarketplaceWritesEnabled } = require('../config/features');
+const { DIAGNOSIS_FIELD, REPAIR_REVIEW_FIELD, reserveUsage, releaseUsage } = require('../services/usage/usageCounter');
+const { isMarketplaceWritesEnabled, isAskExpertEnabled, requireFeature } = require('../config/features');
+const { localizedError } = require('../utils/localizedResponse');
 
 // If the first AI round trip already took this long, do not start a second one.
 const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
 
-function currentMonthKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-async function checkAndTrackUsage(uid) {
+// Active subscribers are unlimited. Everyone else reserves one slot of the monthly
+// counter atomically; the caller must release it (releaseQuietly) if the request fails.
+async function checkAndTrackUsage(uid, field = DIAGNOSIS_FIELD, limit = getFreeMonthlyLimit()) {
   const subDoc = await db.collection('users').doc(uid)
     .collection('subscription').doc('current').get();
   const sub = subDoc.exists ? subDoc.data() : null;
@@ -37,16 +37,19 @@ async function checkAndTrackUsage(uid) {
     return { allowed: true, isActive: true };
   }
 
-  const monthKey = currentMonthKey();
-  const usageRef = db.collection('users').doc(uid).collection('usage').doc(monthKey);
-  const usageDoc = await usageRef.get();
-  const currentCount = usageDoc.exists ? (usageDoc.data().diagnosisCount || 0) : 0;
-
-  if (currentCount >= getFreeMonthlyLimit()) {
-    return { allowed: false, isActive: false, usageCount: currentCount };
+  const reservation = await reserveUsage(db, uid, field, limit);
+  if (!reservation.allowed) {
+    return { allowed: false, isActive: false, usageCount: reservation.count };
   }
+  return { allowed: true, isActive: false, reservation, usageCount: reservation.count };
+}
 
-  return { allowed: true, isActive: false, usageRef, usageCount: currentCount };
+async function releaseQuietly(reservation) {
+  try {
+    await releaseUsage(db, reservation);
+  } catch (error) {
+    logger.error('Failed to release usage reservation', error);
+  }
 }
 
 async function saveToHistory(uid, entry) {
@@ -165,6 +168,7 @@ async function findSimilarConfirmedCases(description, carBrand) {
 }
 
 router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
+  let reservation = null;
   try {
     const { description, car, obd_codes, image: rawImage } = req.body;
     const locale = normalizeLocale(req.body.locale);
@@ -193,16 +197,9 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
     const usageCheck = usageLimitBypassed
       ? { allowed: true, isActive: false, bypassed: true }
       : await checkAndTrackUsage(req.uid);
+    reservation = usageCheck.reservation || null;
     if (!usageCheck.allowed) {
-      return res.status(402).json({
-        code: 'FREE_DIAGNOSIS_LIMIT_REACHED',
-        error: locale === 'en'
-          ? "You have reached this month's free diagnosis limit. It renews at the start of next month."
-          : 'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.',
-        subscriptionRequired: false,
-        freeUsageLimit: getFreeMonthlyLimit(),
-        limitResetsAt: nextMonthStartIso(),
-      });
+      return res.status(402).json(limitReachedBody(locale, getFreeMonthlyLimit(), 'diagnosis'));
     }
 
     const obdContext = localObdContext(normalizedObdCodes);
@@ -294,15 +291,12 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
 
     parsed.diagnosis_id = historyId;
 
-    if (!usageCheck.isActive && usageCheck.usageRef) {
-      await usageCheck.usageRef.set(
-        { diagnosisCount: (usageCheck.usageCount || 0) + 1 },
-        { merge: true }
-      );
-    }
-
+    // The slot was reserved up front, so the counter is already incremented.
+    reservation = null;
     res.json(parsed);
   } catch (error) {
+    // A failed diagnosis does not use up a free slot.
+    await releaseQuietly(reservation);
     logger.error('Diagnosis request failed', error, { requestId: req.requestId });
     const statusCode = error.statusCode || 500;
     const locale = normalizeLocale(req.body?.locale);
@@ -374,7 +368,8 @@ router.patch('/history/:id/feedback', verifyToken, async (req, res) => {
   }
 });
 
-router.post('/ask-expert', verifyToken, aiLimiter, async (req, res) => {
+// Off by default (ASK_EXPERT_ENABLED=true to enable): no live screen uses it.
+router.post('/ask-expert', verifyToken, requireFeature(() => isAskExpertEnabled(), localizedError), aiLimiter, async (req, res) => {
   try {
     const { question, diagnosis, car } = req.body;
     if (!question || !question.trim()) {
@@ -441,6 +436,7 @@ router.post('/parts/external-search', verifyToken, searchLimiter, async (req, re
 });
 
 async function repairReviewHandler(req, res) {
+  let reservation = null;
   try {
     const { workshopStatement, proposedPart, proposedParts, quotedPrice, car, diagnosis, obd_codes, image: rawImage, openIssues, maintenanceHistory, repairHistory } = req.body;
     const locale = normalizeLocale(req.body.locale);
@@ -456,6 +452,17 @@ async function repairReviewHandler(req, res) {
         error: locale === 'en' ? 'Enter the workshop statement, proposed parts, or a quote image' : 'أدخل كلام الورشة أو القطع المقترحة أو صورة العرض',
       });
     }
+    // Monthly free limit for quote reviews (separate counter from diagnoses).
+    const bypassed = isDevelopmentUsageLimitBypassEnabled() || isQaUsageLimitBypassEnabled(req.uid);
+    const reviewLimit = getFreeMonthlyBeforeYouPayLimit();
+    const usageCheck = bypassed
+      ? { allowed: true, isActive: false, bypassed: true }
+      : await checkAndTrackUsage(req.uid, REPAIR_REVIEW_FIELD, reviewLimit);
+    reservation = usageCheck.reservation || null;
+    if (!usageCheck.allowed) {
+      return res.status(402).json(limitReachedBody(locale, reviewLimit, 'quote_review'));
+    }
+
     const codes = normalizeObdCodes(obd_codes);
     const numericPrice = quotedPrice === null || quotedPrice === undefined || String(quotedPrice).trim() === ''
       ? null
@@ -479,7 +486,13 @@ async function repairReviewHandler(req, res) {
       quote_image_attached: !!image,
     };
     const result = await generateRepairReview({ provider: getAiProvider(), input, image, locale });
-    if (!result.analysis_complete) return res.status(200).json(result);
+    if (!result.analysis_complete) {
+      // An incomplete review is not counted.
+      await releaseQuietly(reservation);
+      reservation = null;
+      return res.status(200).json(result);
+    }
+    reservation = null; // completed: the reserved slot stays used
     const reviewId = Date.now().toString();
     result.review_id = reviewId;
     try {
@@ -496,6 +509,7 @@ async function repairReviewHandler(req, res) {
     }
     return res.json(result);
   } catch (error) {
+    await releaseQuietly(reservation);
     logger.error('Before-you-pay analysis failed', error, { requestId: req.requestId });
     const locale = normalizeLocale(req.body?.locale);
     return res.status(500).json({
