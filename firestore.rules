@@ -17,9 +17,25 @@ service cloud.firestore {
       allow update: if accountCanWrite(uid) && request.resource.data.deletionPending != true;
       allow delete: if false;
 
+      // Reads stay open to the owner (unchanged). Writes are an allowlist of the
+      // collections the app writes directly from the client. Anything managed by
+      // the Backend through Firebase Admin (subscription, usage, history,
+      // diagnosis_cache, repair_reviews) is NOT writable by clients; Admin SDK
+      // bypasses these rules.
       match /{document=**} {
         allow read: if signedInAs(uid);
-        allow write: if accountCanWrite(uid);
+      }
+
+      match /{clientCollection}/{docId=**} {
+        allow write: if accountCanWrite(uid) &&
+          clientCollection in [
+            'cars',
+            'vehicle_issues',
+            'repairs',
+            'repair_verifications',
+            'maintenance_records',
+            'maintenance_reminders'
+          ];
       }
     }
 
