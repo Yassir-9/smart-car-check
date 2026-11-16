@@ -33,6 +33,8 @@ function createLimiter({ windowMs, limit, keyGenerator = clientKey }) {
 const generalApiLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 300 });
 const aiLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 20 });
 const searchLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 60 });
+// Public /go redirector: per IP (there is no signed-in user on this route).
+const partsGuideLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 60 });
 const marketplaceReadLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 120 });
 const marketplaceWriteLimiter = createLimiter({ windowMs: 60 * 60 * 1000, limit: 30 });
 const checkoutLimiter = createLimiter({ windowMs: 15 * 60 * 1000, limit: 10 });
@@ -57,6 +59,7 @@ module.exports = {
   generalApiLimiter,
   aiLimiter,
   searchLimiter,
+  partsGuideLimiter,
   marketplaceReadLimiter,
   marketplaceWriteLimiter,
   checkoutLimiter,
