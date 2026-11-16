@@ -1,3 +1,4 @@
+import '../config/feature_flags.dart';
 import '../utils/localized_vehicle_text.dart';
 import 'package:flutter/material.dart';
 import '../config/app_brand.dart';
@@ -395,15 +396,18 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                               title: Text(l10n.beforePayWorkshop),
                               subtitle: Text(l10n.reviewRepairWithCarData),
                               onTap: () => _open(const BeforeYouPayScreen())),
-                          const Divider(height: 1),
-                          ListTile(
-                              hoverColor:
-                                  AppColors.premium.withValues(alpha: .035),
-                              leading: _serviceIcon(
-                                  Icons.workspace_premium_outlined,
-                                  AppColors.premium),
-                              title: Text(l10n.subscription),
-                              onTap: () => _open(const SubscriptionScreen())),
+                          if (FeatureFlags.subscriptionEnabled) ...[
+                            const Divider(height: 1),
+                            ListTile(
+                                hoverColor:
+                                    AppColors.premium.withValues(alpha: .035),
+                                leading: _serviceIcon(
+                                    Icons.workspace_premium_outlined,
+                                    AppColors.premium),
+                                title: Text(l10n.subscription),
+                                onTap: () =>
+                                    _open(const SubscriptionScreen())),
+                          ],
                           const Divider(height: 1),
                           ListTile(
                               hoverColor:

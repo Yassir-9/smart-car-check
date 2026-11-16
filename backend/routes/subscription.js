@@ -6,6 +6,7 @@ const { MOYASAR_BASE, authHeader, fetchVerifiedInvoice } = require('../utils/moy
 const logger = require('../utils/logger');
 const { checkoutLimiter } = require('../middleware/rateLimit');
 const { localizedError, localizedPaymentSuccess, requestLocale } = require('../utils/localizedResponse');
+const { isSubscriptionsEnabled, requireFeature } = require('../config/features');
 
 const BACKEND_URL = 'https://car-ai-backend-7gpb.onrender.com';
 
@@ -19,7 +20,10 @@ function currentMonthKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-router.post('/subscribe', verifyToken, checkoutLimiter, async (req, res) => {
+// Subscriptions are off by default (SUBSCRIPTIONS_ENABLED=true to enable).
+// Only invoice creation is gated; the webhook keeps verifying invoices that
+// were already paid.
+router.post('/subscribe', verifyToken, requireFeature(() => isSubscriptionsEnabled(), localizedError), checkoutLimiter, async (req, res) => {
   try {
     const locale = requestLocale(req);
     const { plan } = req.body;
