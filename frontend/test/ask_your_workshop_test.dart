@@ -33,11 +33,11 @@ Future<void> pumpWith(WidgetTester tester, Locale locale, Object? questions) asy
             'confidence_score': 70,
             'can_drive': true,
             'drive_advice': 'Drive carefully.',
-            'likely_causes': ['Worn parts'],
-            'recommended_checks': ['Inspect ignition'],
-            'possible_parts': [],
+            'likely_causes': const ['Worn parts'],
+            'recommended_checks': const ['Inspect ignition'],
+            'possible_parts': const [],
             'next_step': 'Book an inspection',
-            'obd_codes': [],
+            'obd_codes': const [],
             if (questions != null) 'workshop_questions': questions,
           })));
   await tester.pumpAndSettle();
