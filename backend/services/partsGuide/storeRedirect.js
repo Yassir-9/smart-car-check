@@ -1,4 +1,5 @@
 const { STORES, enabledStoreKeys } = require('../../config/partnerStores');
+const { speeroTerm } = require('../../config/speeroAliases');
 
 const ALLOWED_PARAMS = new Set(['part', 'make', 'model', 'year']);
 const MAX_FIELD_LENGTH = 80;
@@ -71,8 +72,9 @@ function buildDestination(storeKey, input, env = process.env) {
   const q = store.queryFields && input.fields
     ? store.queryFields.map((f) => input.fields[f]).filter(Boolean).join(' ')
     : full;
+  const term = storeKey === 'speero' ? speeroTerm(q) : q;
   const base = store.searchUrl
-    ? store.searchUrl(q, { siteHosts: hostsWithSearch(env) })
+    ? store.searchUrl(term, { siteHosts: hostsWithSearch(env) })
     : `https://${store.host}/`;
   const url = new URL(base);
   if (url.protocol !== 'https:') return fail('UNKNOWN_STORE');
