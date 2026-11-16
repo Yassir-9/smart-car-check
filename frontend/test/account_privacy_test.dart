@@ -38,11 +38,12 @@ void main() {
     final privacy = File('../docs/privacy-policy.html').readAsStringSync();
     final deletion = File('../docs/delete-account.html').readAsStringSync();
     expect(privacy, contains('Firebase Authentication'));
-    expect(privacy, contains('Google Gemini'));
-    expect(privacy, contains('Moyasar'));
+    expect(privacy, contains('third-party AI service provider'));
+    expect(privacy, isNot(contains('Gemini')));
+    expect(privacy, isNot(contains('Moyasar')));
     expect(privacy, contains('حذف الحساب'));
     expect(deletion, contains('Smart Car Check account'));
-    expect(deletion, contains('mailto:tv.4735@gmail.com'));
+    expect(deletion, contains('mailto:yambyte.support@gmail.com'));
     expect(deletion, contains('طلب حذف حساب'));
   });
 }

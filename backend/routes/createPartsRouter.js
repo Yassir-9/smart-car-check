@@ -1,4 +1,5 @@
 const express = require('express');
+const { isMarketplaceWritesEnabled, requireFeature } = require('../config/features');
 const {
   toPublicPart,
   toCompatibilityPart,
@@ -15,8 +16,12 @@ function createPartsRouter({
   localizedError,
   logger,
   exposePublicContact = false,
+  marketplaceWritesEnabled = () => isMarketplaceWritesEnabled(),
 }) {
   const router = express.Router();
+  // Creating/updating listings is off by default (MARKETPLACE_WRITES_ENABLED=true).
+  // Removing your own listing stays possible.
+  const writesGate = requireFeature(marketplaceWritesEnabled, localizedError);
 
   async function readParts() {
     const snapshot = await db.collection('parts').orderBy('createdAt', 'desc').get();
@@ -101,7 +106,7 @@ function createPartsRouter({
     }
   });
 
-  router.post('/parts', verifyToken, marketplaceWriteLimiter, async (req, res) => {
+  router.post('/parts', verifyToken, writesGate, marketplaceWriteLimiter, async (req, res) => {
     try {
       const {
         partName, carBrand, carModel, price, sellerPhone, notes,
@@ -151,7 +156,7 @@ function createPartsRouter({
     }
   });
 
-  router.put('/parts/:id', verifyToken, marketplaceWriteLimiter, async (req, res) => {
+  router.put('/parts/:id', verifyToken, writesGate, marketplaceWriteLimiter, async (req, res) => {
     try {
       const docRef = db.collection('parts').doc(req.params.id);
       const doc = await docRef.get();

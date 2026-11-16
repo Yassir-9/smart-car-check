@@ -39,6 +39,10 @@ const messages = {
     ar: 'التقييم يجب أن يكون بين 1 و5',
     en: 'Rating must be between 1 and 5',
   },
+  FEATURE_DISABLED: {
+    ar: 'هذه الخدمة غير متاحة حالياً',
+    en: 'This feature is not available right now',
+  },
   INTERNAL_ERROR: {
     ar: 'حدث خطأ، حاول مرة أخرى',
     en: 'An error occurred. Try again.',

@@ -60,7 +60,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _plan = data['plan'];
           _currentPeriodEnd = data['currentPeriodEnd'];
           _freeUsageCount = data['freeUsageCount'] ?? 0;
-          _freeUsageLimit = data['freeUsageLimit'] ?? 5;
+          _freeUsageLimit = data['freeUsageLimit'] ?? AppPricing.freeDiagnosesPerMonth;
         });
       } else {
         setState(() => _errorText = l10n.subscriptionStatusLoadFailed);

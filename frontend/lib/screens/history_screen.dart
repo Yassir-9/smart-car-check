@@ -22,6 +22,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String? _errorText;
   List<dynamic> _items = [];
   String _selectedFilter = 'all';
+  static const int _pageSize = 50;
+  bool _hasMore = false;
+  bool _loadingMore = false;
 
   static const List<String> _filters = ['all', 'high', 'medium', 'low'];
 
@@ -39,12 +42,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     try {
       final token = await FirebaseAuth.instance.currentUser?.getIdToken();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/history'),
+        Uri.parse('$baseUrl/api/history?limit=$_pageSize'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        setState(() => _items = data is List ? data : (data['items'] ?? []));
+        final items = data is List ? data : (data['items'] ?? []);
+        setState(() {
+          _items = items;
+          _hasMore = items.length >= _pageSize;
+        });
       } else {
         setState(() => _errorText = 'server:${response.statusCode}');
       }
@@ -52,6 +59,38 @@ class _HistoryScreenState extends State<HistoryScreen> {
       setState(() => _errorText = 'connection');
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || _items.isEmpty) return;
+    final cursor = (_items.last as Map?)?['timestamp']?.toString();
+    if (cursor == null) {
+      setState(() => _hasMore = false);
+      return;
+    }
+    setState(() => _loadingMore = true);
+    try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      final response = await http.get(
+        Uri.parse(
+            '$baseUrl/api/history?limit=$_pageSize&before=${Uri.encodeQueryComponent(cursor)}'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final items = data is List ? data : (data['items'] ?? []);
+        setState(() {
+          _items = [..._items, ...items];
+          _hasMore = items.length >= _pageSize;
+        });
+      } else if (mounted) {
+        _showSnack(AppLocalizations.of(context).historyLoadFailed);
+      }
+    } catch (_) {
+      if (mounted) _showSnack(AppLocalizations.of(context).historyConnectionFailed);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -467,9 +506,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   )
                                 : ListView.builder(
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: filtered.length,
-                                    itemBuilder: (context, index) =>
-                                        _buildItemCard(filtered[index]),
+                                    itemCount: filtered.length + (_hasMore ? 1 : 0),
+                                    itemBuilder: (context, index) {
+                                      if (index < filtered.length) {
+                                        return _buildItemCard(filtered[index]);
+                                      }
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8),
+                                        child: Center(
+                                          child: _loadingMore
+                                              ? const CircularProgressIndicator()
+                                              : OutlinedButton(
+                                                  onPressed: _loadMore,
+                                                  child: Text(l10n.historyLoadMore),
+                                                ),
+                                        ),
+                                      );
+                                    },
                                   ),
                   ),
                 ),

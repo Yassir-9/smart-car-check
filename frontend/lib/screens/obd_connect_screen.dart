@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../config/feature_flags.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
@@ -15,7 +16,9 @@ import '../services/obd_session_service.dart';
 import 'dtc_reference_screen.dart';
 
 class ObdConnectScreen extends StatefulWidget {
-  const ObdConnectScreen({super.key});
+  /// The car the scan belongs to. Defaults to the active car when null.
+  final CarModel? car;
+  const ObdConnectScreen({super.key, this.car});
   @override
   State<ObdConnectScreen> createState() => _ObdConnectScreenState();
 }
@@ -62,6 +65,10 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
   }
 
   Future<void> _loadCar() async {
+    if (widget.car != null) {
+      _activeCar = widget.car;
+      return;
+    }
     try {
       final cars = await CarService.loadCars();
       final activeId = await CarService.getActiveCarId();
@@ -486,11 +493,13 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
               fontFamily: 'monospace',
             ),
           ),
-          trailing: IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: AppLocalizations.of(context).findRequiredPart,
-            onPressed: () => _searchParts(code),
-          ),
+          trailing: FeatureFlags.marketplaceEnabled
+              ? IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: AppLocalizations.of(context).findRequiredPart,
+                  onPressed: () => _searchParts(code),
+                )
+              : null,
         ),
       );
 }

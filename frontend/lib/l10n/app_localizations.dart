@@ -719,7 +719,7 @@ abstract class AppLocalizations {
   /// No description provided for @freeDiagnosisLimitReached.
   ///
   /// In ar, this message translates to:
-  /// **'انتهى الحد المجاني لهذا الشهر. يمكنك إدارة الاشتراك من الصفحة الرئيسية.'**
+  /// **'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.'**
   String get freeDiagnosisLimitReached;
 
   /// No description provided for @diagnosisRequestFailed.
@@ -829,6 +829,42 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'الاتصال بجهاز OBD'**
   String get connectObd;
+
+  /// No description provided for @obdScanTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'وقت الفحص: {time}'**
+  String obdScanTime(String time);
+
+  /// No description provided for @obdScanOtherCar.
+  ///
+  /// In ar, this message translates to:
+  /// **'آخر فحص OBD كان لسيارة أخرى ولن يُستخدم. أعد المسح لهذه السيارة.'**
+  String get obdScanOtherCar;
+
+  /// No description provided for @obdScanExpired.
+  ///
+  /// In ar, this message translates to:
+  /// **'مضى على آخر فحص OBD أكثر من 30 دقيقة ولن يُستخدم. أعد المسح.'**
+  String get obdScanExpired;
+
+  /// No description provided for @ignoreObdCodes.
+  ///
+  /// In ar, this message translates to:
+  /// **'تجاهل الأكواد'**
+  String get ignoreObdCodes;
+
+  /// No description provided for @rescanObd.
+  ///
+  /// In ar, this message translates to:
+  /// **'إعادة المسح'**
+  String get rescanObd;
+
+  /// No description provided for @historyLoadMore.
+  ///
+  /// In ar, this message translates to:
+  /// **'عرض المزيد'**
+  String get historyLoadMore;
 
   /// No description provided for @manageObd.
   ///

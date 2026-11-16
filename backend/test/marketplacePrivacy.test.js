@@ -88,7 +88,7 @@ function verifyToken(req, res, next) {
 const pass = (_req, _res, next) => next();
 const logger = { error() {} };
 
-function appWith({ uidLimiter = pass, ipLimiter = pass, exposePublicContact = false } = {}) {
+function appWith({ uidLimiter = pass, ipLimiter = pass, exposePublicContact = false, writesEnabled = true } = {}) {
   const app = express();
   app.set('trust proxy', 1);
   app.use(express.json());
@@ -102,6 +102,7 @@ function appWith({ uidLimiter = pass, ipLimiter = pass, exposePublicContact = fa
     localizedError,
     logger,
     exposePublicContact,
+    marketplaceWritesEnabled: () => writesEnabled,
   }));
   return app;
 }
@@ -288,4 +289,18 @@ test('legacy diagnosis history is sanitized before it is returned', () => {
   assert.equal(sanitized.result.matched_parts[0].partName, 'Brake pad');
   assert.equal(Object.hasOwn(sanitized.result.matched_parts[0], 'sellerPhone'), false);
   assert.equal(Object.hasOwn(sanitized.result.matched_parts[0], 'privateContactEmail'), false);
+});
+
+test('creating and updating listings is blocked (403 FEATURE_DISABLED) while writes are disabled, delete still works for the owner', async () => {
+  await withServer(appWith({ writesEnabled: false }), async (baseUrl) => {
+    const headers = { authorization: 'Bearer user-1', 'content-type': 'application/json' };
+    const body = JSON.stringify({ partName: 'X', carBrand: 'Toyota', sellerPhone: '0500000000' });
+    for (const [method, path] of [['POST', '/parts'], ['PUT', '/parts/part-1']]) {
+      const response = await fetch(`${baseUrl}${path}`, { method, headers, body });
+      assert.equal(response.status, 403, `${method} ${path}`);
+      assert.equal((await response.json()).code, 'FEATURE_DISABLED');
+    }
+    const remove = await fetch(`${baseUrl}/parts/part-1`, { method: 'DELETE', headers: { authorization: 'Bearer user-1' } });
+    assert.notEqual(remove.status, 403);
+  });
 });

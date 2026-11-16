@@ -328,7 +328,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get freeDiagnosisLimitReached =>
-      'انتهى الحد المجاني لهذا الشهر. يمكنك إدارة الاشتراك من الصفحة الرئيسية.';
+      'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.';
 
   @override
   String diagnosisRequestFailed(int status) {
@@ -389,6 +389,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get connectObd => 'الاتصال بجهاز OBD';
+
+  @override
+  String obdScanTime(String time) {
+    return 'وقت الفحص: $time';
+  }
+
+  @override
+  String get obdScanOtherCar =>
+      'آخر فحص OBD كان لسيارة أخرى ولن يُستخدم. أعد المسح لهذه السيارة.';
+
+  @override
+  String get obdScanExpired =>
+      'مضى على آخر فحص OBD أكثر من 30 دقيقة ولن يُستخدم. أعد المسح.';
+
+  @override
+  String get ignoreObdCodes => 'تجاهل الأكواد';
+
+  @override
+  String get rescanObd => 'إعادة المسح';
+
+  @override
+  String get historyLoadMore => 'عرض المزيد';
 
   @override
   String get manageObd => 'إدارة اتصال OBD';

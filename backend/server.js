@@ -7,7 +7,6 @@ const logger = require('./utils/logger');
 const { generalApiLimiter } = require('./middleware/rateLimit');
 const { createCorsOptions, helmetOptions } = require('./middleware/httpSecurity');
 const diagnosisRoutes = require('./routes/diagnosis');
-const downloadRoutes = require('./routes/download');
 const partsRoutes = require('./routes/parts');
 const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscription');
@@ -41,7 +40,6 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api', generalApiLimiter);
 
 app.use('/api', diagnosisRoutes);
-app.use('/download', downloadRoutes);
 app.use('/api', partsRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', subscriptionRoutes);

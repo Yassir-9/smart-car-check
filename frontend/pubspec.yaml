@@ -1,7 +1,7 @@
 name: car_ai_diagnosis
 description: تطبيق تشخيص السيارات الذكي بالذكاء الاصطناعي
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.2+4
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

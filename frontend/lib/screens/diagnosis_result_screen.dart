@@ -1,3 +1,4 @@
+import '../config/feature_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/car_model.dart';
@@ -342,24 +343,26 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
             _section(l10n.checksFirst, _list('recommended_checks'),
                 Icons.fact_check_outlined),
             const SizedBox(height: 12),
-            _section(l10n.relatedParts, _list('possible_parts'),
-                Icons.build_outlined),
-            if (_list('possible_parts').isNotEmpty)
-              ..._list('possible_parts').map((part) => Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: TextButton.icon(
-                    onPressed: () => _showPartSearch(part),
-                    icon: const Icon(Icons.search),
-                    label: Text(l10n.findPart),
-                  ))),
-            if (_list('possible_parts').isNotEmpty)
-              Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(l10n.doNotReplaceBeforeInspection,
-                      style: const TextStyle(
-                          color: AppColors.warning,
-                          fontWeight: FontWeight.w700))),
-            const SizedBox(height: 12),
+            if (FeatureFlags.marketplaceEnabled) ...[
+              _section(l10n.relatedParts, _list('possible_parts'),
+                  Icons.build_outlined),
+              if (_list('possible_parts').isNotEmpty)
+                ..._list('possible_parts').map((part) => Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () => _showPartSearch(part),
+                      icon: const Icon(Icons.search),
+                      label: Text(l10n.findPart),
+                    ))),
+              if (_list('possible_parts').isNotEmpty)
+                Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(l10n.doNotReplaceBeforeInspection,
+                        style: const TextStyle(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w700))),
+              const SizedBox(height: 12),
+            ],
             OutlinedButton.icon(
                 onPressed: _showWorkshopMode,
                 icon: const Icon(Icons.handyman_outlined),

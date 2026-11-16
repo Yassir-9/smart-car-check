@@ -14,7 +14,12 @@ const { generateRepairReview } = require('../services/repairReview/repairReviewS
 const { aiLimiter, searchLimiter } = require('../middleware/rateLimit');
 const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/marketplace/partPrivacy');
 
-const FREE_MONTHLY_LIMIT = 5;
+const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
+const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
+const { isMarketplaceWritesEnabled } = require('../config/features');
+
+// If the first AI round trip already took this long, do not start a second one.
+const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
 
 function currentMonthKey() {
   const now = new Date();
@@ -37,7 +42,7 @@ async function checkAndTrackUsage(uid) {
   const usageDoc = await usageRef.get();
   const currentCount = usageDoc.exists ? (usageDoc.data().diagnosisCount || 0) : 0;
 
-  if (currentCount >= FREE_MONTHLY_LIMIT) {
+  if (currentCount >= getFreeMonthlyLimit()) {
     return { allowed: false, isActive: false, usageCount: currentCount };
   }
 
@@ -53,11 +58,10 @@ async function saveToHistory(uid, entry) {
   }
 }
 
-async function getUserHistory(uid) {
+async function getUserHistory(uid, page) {
   try {
-    const snapshot = await db.collection('users').doc(uid)
-      .collection('history').orderBy('timestamp', 'desc').get();
-    return snapshot.docs.map((doc) => sanitizeDiagnosisHistoryEntry(doc.data()));
+    const entries = await readHistoryPage(db, uid, page);
+    return entries.map((entry) => sanitizeDiagnosisHistoryEntry(entry));
   } catch (e) {
     logger.error('Failed to load diagnosis history', e);
     return [];
@@ -192,9 +196,12 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
     if (!usageCheck.allowed) {
       return res.status(402).json({
         code: 'FREE_DIAGNOSIS_LIMIT_REACHED',
-        error: locale === 'en' ? 'You have used all free diagnoses for this month' : 'استنفدت عدد التشخيصات المجانية لهذا الشهر',
-        subscriptionRequired: true,
-        freeUsageLimit: FREE_MONTHLY_LIMIT,
+        error: locale === 'en'
+          ? "You have reached this month's free diagnosis limit. It renews at the start of next month."
+          : 'وصلت إلى الحد الشهري للتشخيصات المجانية. يتجدد في بداية الشهر القادم.',
+        subscriptionRequired: false,
+        freeUsageLimit: getFreeMonthlyLimit(),
+        limitResetsAt: nextMonthStartIso(),
       });
     }
 
@@ -224,7 +231,11 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
       let rawText;
       let parsedCandidate;
       let errors = [];
+      let timedOut = false;
+      const aiStartedAt = Date.now();
       for (let attempt = 0; attempt < 2; attempt += 1) {
+        // A second AI round trip is only worth it while there is time left.
+        if (attempt > 0 && Date.now() - aiStartedAt > SECOND_ATTEMPT_MAX_ELAPSED_MS) break;
         try {
           rawText = await provider.generateJson({
             system: systemPrompt,
@@ -243,11 +254,16 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
         } catch (error) {
           errors = ['provider response unavailable or invalid'];
           logger.warn('AI diagnosis attempt failed', { provider: provider.name, attempt: attempt + 1, error });
+          if (error?.code === 'AI_TIMEOUT') {
+            timedOut = true;
+            break;
+          }
         }
       }
       if (errors.length !== 0) {
         const providerError = new Error(`AI provider ${provider.name} failed to return a valid diagnosis`);
-        providerError.statusCode = 502;
+        providerError.statusCode = timedOut ? 504 : 502;
+        providerError.code = timedOut ? 'AI_TIMEOUT' : undefined;
         providerError.provider = provider.name;
         throw providerError;
       }
@@ -258,7 +274,10 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
 
     const parsed = addLegacyAliases(diagnosis, locale);
     parsed.obd_analysis = diagnosis.obd_codes;
-    parsed.matched_parts = await findMatchingParts(diagnosis.title, car?.brand);
+    // Marketplace off: skip the full parts-collection read and omit matched_parts.
+    if (isMarketplaceWritesEnabled()) {
+      parsed.matched_parts = await findMatchingParts(diagnosis.title, car?.brand);
+    }
     parsed.cache_hit = cacheHit;
 
     // البحث الخارجي صار عند الطلب فقط (زر يدوي بالتطبيق) لتوفير تكلفة API
@@ -287,6 +306,14 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
     logger.error('Diagnosis request failed', error, { requestId: req.requestId });
     const statusCode = error.statusCode || 500;
     const locale = normalizeLocale(req.body?.locale);
+    if (statusCode === 504) {
+      return res.status(504).json({
+        code: 'AI_TIMEOUT',
+        error: locale === 'en'
+          ? 'The analysis took too long. Your free diagnosis was not used. Please try again.'
+          : 'استغرق التحليل وقتًا أطول من المعتاد. لم يُحتسب من تشخيصاتك. حاول مرة أخرى.',
+      });
+    }
     res.status(statusCode).json({
       code: statusCode === 502 ? 'AI_PROVIDER_UNAVAILABLE' : 'DIAGNOSIS_FAILED',
       error: statusCode === 502
@@ -297,8 +324,9 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
 });
 
 // جلب سجل الحوادث (خاص بالمستخدم المسجّل فقط)
+// ?limit=50 (max 100) &before=<timestamp of the last item received> for the next page.
 router.get('/history', verifyToken, async (req, res) => {
-  const history = await getUserHistory(req.uid);
+  const history = await getUserHistory(req.uid, parseHistoryQuery(req.query));
   res.json(history);
 });
 

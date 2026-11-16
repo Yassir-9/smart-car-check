@@ -1,3 +1,4 @@
+import '../config/feature_flags.dart';
 import '../utils/localized_vehicle_text.dart';
 import 'package:flutter/material.dart';
 import '../config/app_brand.dart';
@@ -395,26 +396,31 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                               title: Text(l10n.beforePayWorkshop),
                               subtitle: Text(l10n.reviewRepairWithCarData),
                               onTap: () => _open(const BeforeYouPayScreen())),
-                          const Divider(height: 1),
-                          ListTile(
-                              hoverColor:
-                                  AppColors.premium.withValues(alpha: .035),
-                              leading: _serviceIcon(
-                                  Icons.workspace_premium_outlined,
-                                  AppColors.premium),
-                              title: Text(l10n.subscription),
-                              onTap: () => _open(const SubscriptionScreen())),
-                          const Divider(height: 1),
-                          ListTile(
-                              hoverColor:
-                                  AppColors.accent.withValues(alpha: .035),
-                              leading: _serviceIcon(
-                                  Icons.storefront_outlined, AppColors.accent),
-                              title: Text(l10n.partsMarketplace),
-                              subtitle: Text(l10n.additionalService),
-                              onTap: () => _open(PartsScreen(
-                                  initialBrand: _car?.brand,
-                                  initialModel: _car?.model))),
+                          if (FeatureFlags.subscriptionEnabled) ...[
+                            const Divider(height: 1),
+                            ListTile(
+                                hoverColor:
+                                    AppColors.premium.withValues(alpha: .035),
+                                leading: _serviceIcon(
+                                    Icons.workspace_premium_outlined,
+                                    AppColors.premium),
+                                title: Text(l10n.subscription),
+                                onTap: () =>
+                                    _open(const SubscriptionScreen())),
+                          ],
+                          if (FeatureFlags.marketplaceEnabled) ...[
+                            const Divider(height: 1),
+                            ListTile(
+                                hoverColor:
+                                    AppColors.accent.withValues(alpha: .035),
+                                leading: _serviceIcon(Icons.storefront_outlined,
+                                    AppColors.accent),
+                                title: Text(l10n.partsMarketplace),
+                                subtitle: Text(l10n.additionalService),
+                                onTap: () => _open(PartsScreen(
+                                    initialBrand: _car?.brand,
+                                    initialModel: _car?.model))),
+                          ],
                         ])),
                       ],
                       const SizedBox(height: 28),
