@@ -183,3 +183,27 @@ test('/ask-expert is disabled by default (403 FEATURE_DISABLED) and opens only w
     delete process.env.ASK_EXPERT_ENABLED;
   }
 }));
+
+test('AI part search routes (/parts/external-search, /obd/part-search) answer 403 FEATURE_DISABLED by default', () => withServer(async (base) => {
+  delete process.env.EXTERNAL_PART_SEARCH_ENABLED;
+  for (const route of ['/api/parts/external-search', '/api/obd/part-search']) {
+    for (const locale of ['en', 'ar']) {
+      const res = await fetch(`${base}${route}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-test-uid': 'u1', 'x-app-locale': locale },
+        body: JSON.stringify({ query: 'brake pads', car: { brand: 'Toyota' } }),
+      });
+      assert.equal(res.status, 403, `${route} ${locale}`);
+      assert.equal((await res.json()).code, 'FEATURE_DISABLED');
+    }
+  }
+  process.env.EXTERNAL_PART_SEARCH_ENABLED = 'true';
+  try {
+    const res = await fetch(`${base}/api/parts/external-search`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-test-uid': 'u1' }, body: JSON.stringify({}),
+    });
+    assert.equal(res.status, 400); // passes the gate, then normal validation (query required)
+  } finally {
+    delete process.env.EXTERNAL_PART_SEARCH_ENABLED;
+  }
+}));

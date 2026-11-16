@@ -1076,6 +1076,36 @@ abstract class AppLocalizations {
   /// **'ابحث عن القطعة'**
   String get findPart;
 
+  /// No description provided for @findPartNamed.
+  ///
+  /// In ar, this message translates to:
+  /// **'ابحث عن القطعة: {part}'**
+  String findPartNamed(String part);
+
+  /// No description provided for @partsGuideDisclosure.
+  ///
+  /// In ar, this message translates to:
+  /// **'قد تكون هذه روابط تسويقية: قد نحصل على عمولة عند الشراء دون أي تكلفة إضافية عليك.'**
+  String get partsGuideDisclosure;
+
+  /// No description provided for @marketingLinkTag.
+  ///
+  /// In ar, this message translates to:
+  /// **'رابط تسويقي'**
+  String get marketingLinkTag;
+
+  /// No description provided for @partsGuideLoading.
+  ///
+  /// In ar, this message translates to:
+  /// **'جارٍ تجهيز الروابط…'**
+  String get partsGuideLoading;
+
+  /// No description provided for @askYourWorkshop.
+  ///
+  /// In ar, this message translates to:
+  /// **'اسأل ورشتك'**
+  String get askYourWorkshop;
+
   /// No description provided for @findPartTitle.
   ///
   /// In ar, this message translates to:

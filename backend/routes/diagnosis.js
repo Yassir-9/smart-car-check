@@ -18,7 +18,7 @@ const { getFreeMonthlyLimit, getFreeMonthlyBeforeYouPayLimit } = require('../con
 const { limitReachedBody } = require('../services/usage/limitResponse');
 const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
 const { DIAGNOSIS_FIELD, REPAIR_REVIEW_FIELD, reserveUsage, releaseUsage } = require('../services/usage/usageCounter');
-const { isMarketplaceWritesEnabled, isAskExpertEnabled, requireFeature } = require('../config/features');
+const { isMarketplaceWritesEnabled, isAskExpertEnabled, isExternalPartSearchEnabled, requireFeature } = require('../config/features');
 const { localizedError } = require('../utils/localizedResponse');
 
 // If the first AI round trip already took this long, do not start a second one.
@@ -403,7 +403,8 @@ router.post('/ask-expert', verifyToken, requireFeature(() => isAskExpertEnabled(
   }
 });
 
-router.post('/obd/part-search', verifyToken, searchLimiter, async (req, res) => {
+// Off by default (EXTERNAL_PART_SEARCH_ENABLED=true to enable): AI + web search can invent stores, prices and links.
+router.post('/obd/part-search', verifyToken, requireFeature(() => isExternalPartSearchEnabled(), localizedError), searchLimiter, async (req, res) => {
   try {
     const { code, car } = req.body;
     if (!code) {
@@ -421,7 +422,7 @@ router.post('/obd/part-search', verifyToken, searchLimiter, async (req, res) => 
   }
 });
 
-router.post('/parts/external-search', verifyToken, searchLimiter, async (req, res) => {
+router.post('/parts/external-search', verifyToken, requireFeature(() => isExternalPartSearchEnabled(), localizedError), searchLimiter, async (req, res) => {
   try {
     const { query, car } = req.body;
     if (!query) {

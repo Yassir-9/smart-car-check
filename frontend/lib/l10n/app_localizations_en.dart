@@ -526,10 +526,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checksFirst => 'What should be checked first?';
 
   @override
-  String get relatedParts => 'Potentially related parts';
+  String get relatedParts => 'Parts that may be related';
 
   @override
   String get findPart => 'Find part';
+
+  @override
+  String findPartNamed(String part) {
+    return 'Find part: $part';
+  }
+
+  @override
+  String get partsGuideDisclosure =>
+      'These may be marketing (affiliate) links: we may earn a commission on purchases at no extra cost to you.';
+
+  @override
+  String get marketingLinkTag => 'Marketing link';
+
+  @override
+  String get partsGuideLoading => 'Preparing links…';
+
+  @override
+  String get askYourWorkshop => 'Ask your workshop';
 
   @override
   String get findPartTitle => 'Find a part';

@@ -1,11 +1,10 @@
 import '../config/feature_flags.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/car_model.dart';
 import '../l10n/app_localizations.dart';
 import '../models/vehicle_issue.dart';
 import '../services/car_health_service.dart';
-import '../services/part_search_service.dart';
+import 'part_search_sheet.dart';
 import '../theme/app_design_system.dart';
 import 'workshop_mode_screen.dart';
 import 'repair_verification_screen.dart';
@@ -29,6 +28,11 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
 
   List<String> _list(String key) =>
       List<String>.from(widget.result[key] ?? const []);
+  /// Questions generated with the diagnosis; blank entries are dropped.
+  List<String> get _workshopQuestions => _list('workshop_questions')
+      .map((q) => q.trim())
+      .where((q) => q.isNotEmpty)
+      .toList();
   String get _severity =>
       widget.result['severity_code'] ?? widget.result['severity'] ?? 'medium';
   Color get _severityColor => switch (_severity) {
@@ -67,47 +71,11 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
   }
 
   Future<void> _showPartSearch(String part) async {
-    final l10n = AppLocalizations.of(context);
-    final query = buildPartSearchQuery(
-        part: part,
-        make: widget.car.brand,
-        model: widget.car.model,
-        year: widget.car.year,
-        trim: widget.car.engineType);
     await showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
-        builder: (sheetContext) => SafeArea(
-                child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(l10n.findPartTitle,
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    Text(query, style: const TextStyle(height: 1.5)),
-                    const SizedBox(height: 12),
-                    ...PartSearchService.suppliers
-                        .map((supplier) => OutlinedButton.icon(
-                              onPressed: () => PartSearchService.openSupplier(
-                                  supplier, query),
-                              icon: const Icon(Icons.open_in_new),
-                              label: Text(supplier.name),
-                            )),
-                    TextButton(
-                        onPressed: () => launchUrl(
-                            Uri.https(
-                                'www.google.com', '/search', {'q': query}),
-                            mode: LaunchMode.externalApplication),
-                        child: Text(l10n.generalWebSearch)),
-                    const SizedBox(height: 4),
-                    Text(l10n.partCompatibilityNotice,
-                        textAlign: TextAlign.center),
-                  ]),
-            )));
+        isScrollControlled: true,
+        builder: (_) => PartSearchSheet(part: part, car: widget.car));
   }
 
   void _showWorkshopMode() {
@@ -203,6 +171,63 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
       }
     }
   }
+
+  /// Questions generated with the diagnosis, collapsed by default; hidden when empty.
+  Widget _askYourWorkshop(AppLocalizations l10n) => Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+          key: const Key('ask-your-workshop'),
+          leading: const Icon(Icons.question_answer_outlined,
+              size: 22, color: AppColors.accent),
+          title: Text(l10n.askYourWorkshop,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final question in _workshopQuestions)
+              Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('•  '),
+                        Expanded(
+                            child: Text(question,
+                                style: const TextStyle(height: 1.5)))
+                      ])),
+          ]));
+
+  Widget _partsSection(AppLocalizations l10n) => Card(
+      child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Icon(Icons.build_outlined,
+                  size: 20, color: AppColors.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(l10n.relatedParts,
+                      style: const TextStyle(fontWeight: FontWeight.w800)))
+            ]),
+            const SizedBox(height: 6),
+            for (final part in _list('possible_parts'))
+              Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(children: [
+                    Expanded(
+                        child: Text(part,
+                            style: const TextStyle(height: 1.5))),
+                    Semantics(
+                        label: l10n.findPartNamed(part),
+                        button: true,
+                        excludeSemantics: true,
+                        child: TextButton.icon(
+                          onPressed: () => _showPartSearch(part),
+                          icon: const Icon(Icons.search, size: 18),
+                          label: Text(l10n.findPart),
+                        )),
+                  ])),
+          ])));
 
   Widget _section(String title, List<String> items, IconData icon) {
     if (items.isEmpty) {
@@ -343,24 +368,19 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
             _section(l10n.checksFirst, _list('recommended_checks'),
                 Icons.fact_check_outlined),
             const SizedBox(height: 12),
-            if (FeatureFlags.marketplaceEnabled) ...[
-              _section(l10n.relatedParts, _list('possible_parts'),
-                  Icons.build_outlined),
-              if (_list('possible_parts').isNotEmpty)
-                ..._list('possible_parts').map((part) => Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TextButton.icon(
-                      onPressed: () => _showPartSearch(part),
-                      icon: const Icon(Icons.search),
-                      label: Text(l10n.findPart),
-                    ))),
-              if (_list('possible_parts').isNotEmpty)
-                Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(l10n.doNotReplaceBeforeInspection,
-                        style: const TextStyle(
-                            color: AppColors.warning,
-                            fontWeight: FontWeight.w700))),
+            if (_workshopQuestions.isNotEmpty) ...[
+              _askYourWorkshop(l10n),
+              const SizedBox(height: 12),
+            ],
+            if (FeatureFlags.partsGuideEnabled &&
+                _list('possible_parts').isNotEmpty) ...[
+              _partsSection(l10n),
+              Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(l10n.doNotReplaceBeforeInspection,
+                      style: const TextStyle(
+                          color: AppColors.warning,
+                          fontWeight: FontWeight.w700))),
               const SizedBox(height: 12),
             ],
             OutlinedButton.icon(

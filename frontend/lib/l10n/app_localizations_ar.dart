@@ -519,6 +519,24 @@ class AppLocalizationsAr extends AppLocalizations {
   String get findPart => 'ابحث عن القطعة';
 
   @override
+  String findPartNamed(String part) {
+    return 'ابحث عن القطعة: $part';
+  }
+
+  @override
+  String get partsGuideDisclosure =>
+      'قد تكون هذه روابط تسويقية: قد نحصل على عمولة عند الشراء دون أي تكلفة إضافية عليك.';
+
+  @override
+  String get marketingLinkTag => 'رابط تسويقي';
+
+  @override
+  String get partsGuideLoading => 'جارٍ تجهيز الروابط…';
+
+  @override
+  String get askYourWorkshop => 'اسأل ورشتك';
+
+  @override
   String get findPartTitle => 'البحث عن القطعة';
 
   @override
