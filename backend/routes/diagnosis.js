@@ -16,16 +16,14 @@ const { toPublicPart, sanitizeDiagnosisHistoryEntry } = require('../services/mar
 
 const { getFreeMonthlyLimit, nextMonthStartIso } = require('../config/limits');
 const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
+const { DIAGNOSIS_FIELD, reserveUsage, releaseUsage } = require('../services/usage/usageCounter');
 const { isMarketplaceWritesEnabled } = require('../config/features');
 
 // If the first AI round trip already took this long, do not start a second one.
 const SECOND_ATTEMPT_MAX_ELAPSED_MS = 30000;
 
-function currentMonthKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
+// Active subscribers are unlimited. Everyone else reserves one slot of the monthly
+// counter atomically; the caller must release it (releaseQuietly) if the request fails.
 async function checkAndTrackUsage(uid) {
   const subDoc = await db.collection('users').doc(uid)
     .collection('subscription').doc('current').get();
@@ -37,16 +35,19 @@ async function checkAndTrackUsage(uid) {
     return { allowed: true, isActive: true };
   }
 
-  const monthKey = currentMonthKey();
-  const usageRef = db.collection('users').doc(uid).collection('usage').doc(monthKey);
-  const usageDoc = await usageRef.get();
-  const currentCount = usageDoc.exists ? (usageDoc.data().diagnosisCount || 0) : 0;
-
-  if (currentCount >= getFreeMonthlyLimit()) {
-    return { allowed: false, isActive: false, usageCount: currentCount };
+  const reservation = await reserveUsage(db, uid, DIAGNOSIS_FIELD, getFreeMonthlyLimit());
+  if (!reservation.allowed) {
+    return { allowed: false, isActive: false, usageCount: reservation.count };
   }
+  return { allowed: true, isActive: false, reservation, usageCount: reservation.count };
+}
 
-  return { allowed: true, isActive: false, usageRef, usageCount: currentCount };
+async function releaseQuietly(reservation) {
+  try {
+    await releaseUsage(db, reservation);
+  } catch (error) {
+    logger.error('Failed to release usage reservation', error);
+  }
 }
 
 async function saveToHistory(uid, entry) {
@@ -165,6 +166,7 @@ async function findSimilarConfirmedCases(description, carBrand) {
 }
 
 router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
+  let reservation = null;
   try {
     const { description, car, obd_codes, image: rawImage } = req.body;
     const locale = normalizeLocale(req.body.locale);
@@ -193,6 +195,7 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
     const usageCheck = usageLimitBypassed
       ? { allowed: true, isActive: false, bypassed: true }
       : await checkAndTrackUsage(req.uid);
+    reservation = usageCheck.reservation || null;
     if (!usageCheck.allowed) {
       return res.status(402).json({
         code: 'FREE_DIAGNOSIS_LIMIT_REACHED',
@@ -294,15 +297,12 @@ router.post('/diagnose', verifyToken, aiLimiter, async (req, res) => {
 
     parsed.diagnosis_id = historyId;
 
-    if (!usageCheck.isActive && usageCheck.usageRef) {
-      await usageCheck.usageRef.set(
-        { diagnosisCount: (usageCheck.usageCount || 0) + 1 },
-        { merge: true }
-      );
-    }
-
+    // The slot was reserved up front, so the counter is already incremented.
+    reservation = null;
     res.json(parsed);
   } catch (error) {
+    // A failed diagnosis does not use up a free slot.
+    await releaseQuietly(reservation);
     logger.error('Diagnosis request failed', error, { requestId: req.requestId });
     const statusCode = error.statusCode || 500;
     const locale = normalizeLocale(req.body?.locale);
