@@ -40,3 +40,18 @@ test('deleted/pending accounts remain blocked for client writes', () => {
 test('everything outside users/{uid} stays server-only', () => {
   assert.match(rules, /match \/\{document=\*\*\}\s*\{\s*allow read, write: if false;/);
 });
+
+// Regression: reading a missing field in Firestore rules is an error (= denied).
+// The user document only has {activeCarId}, so deletionPending must be read with .get().
+test('deletionPending is never read as a bare property', () => {
+  const code = rules.split(/\r?\n/).filter((line) => !line.trim().startsWith('//')).join('\n');
+  assert.doesNotMatch(code, /\.deletionPending\b/);
+  const reads = code.match(/\.get\('deletionPending', false\)/g) || [];
+  assert.equal(reads.length, 3); // accountCanWrite, create, update
+});
+
+test('the user document itself can still be created/updated by its owner', () => {
+  assert.match(rules, /allow create: if signedInAs\(uid\) && request\.resource\.data\.get\('deletionPending', false\) != true;/);
+  assert.match(rules, /allow update: if accountCanWrite\(uid\) && request\.resource\.data\.get\('deletionPending', false\) != true;/);
+  assert.match(rules, /allow delete: if false;/);
+});
