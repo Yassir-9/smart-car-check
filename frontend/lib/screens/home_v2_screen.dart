@@ -48,7 +48,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceHistory = false}) async {
     try {
       final cars = await CarService.loadCars(),
           active = await CarService.getActiveCarId();
@@ -76,7 +76,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
         // cold start) and must not hold back the first paint of the home screen.
         final activeCar = car;
         if (activeCar != null) {
-          LatestDiagnosisService.forCar(activeCar).then((latest) {
+          LatestDiagnosisService.forCarCached(activeCar, force: forceHistory).then((latest) {
             if (mounted && _car?.id == activeCar.id) {
               setState(() => _latestDiagnosis = latest);
             }
@@ -165,7 +165,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
       body: LayoutBuilder(builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 820;
         return RefreshIndicator(
-          onRefresh: _load,
+          onRefresh: () => _load(forceHistory: true),
           child: ListView(children: [
             Center(
               child: ConstrainedBox(

@@ -21,12 +21,46 @@ class LatestDiagnosis {
 /// the server. Diagnoses missing from `vehicle_issues` therefore showed in the
 /// History tab but "No previous checks" on the home screen.
 class LatestDiagnosisService {
+  /// The home card only needs the newest few entries (the server caps it at 30+).
+  static const int homeHistoryLimit = 10;
+
   static Future<List<dynamic>> Function() historyLoader = _loadHistory;
+
+  static LatestDiagnosis? _cached;
+  static String? _cachedCarId;
+  static bool _stale = true;
+
+  /// Call after a new diagnosis was saved so the next home load refetches.
+  static void invalidate() => _stale = true;
+
+  /// Forget everything (sign-out, tests).
+  static void reset() {
+    _cached = null;
+    _cachedCarId = null;
+    _stale = true;
+  }
+
+  /// Like [forCar], but hits the server only on the first load, after
+  /// [invalidate] (a new diagnosis), for another car, or when [force] is set
+  /// (pull to refresh). Returning from a sub screen reuses the cached value.
+  static Future<LatestDiagnosis?> forCarCached(CarModel car,
+      {bool force = false}) async {
+    if (!force && !_stale && _cachedCarId == car.id) return _cached;
+    try {
+      final latest = pickLatest(await historyLoader(), car);
+      _cached = latest;
+      _cachedCarId = car.id;
+      _stale = false;
+      return latest;
+    } catch (_) {
+      return _cachedCarId == car.id ? _cached : null;
+    }
+  }
 
   static Future<List<dynamic>> _loadHistory() async {
     final token = await FirebaseAuth.instance.currentUser?.getIdToken();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/history?limit=30'),
+      Uri.parse('${ApiConfig.baseUrl}/api/history?limit=$homeHistoryLimit'),
       headers: {'Authorization': 'Bearer $token'},
     ).timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) return const [];

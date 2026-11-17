@@ -57,4 +57,38 @@ void main() {
         ];
     expect((await LatestDiagnosisService.forCar(land))!.title, 'ok');
   });
+
+  group('home history cache', () {
+    var calls = 0;
+    setUp(() {
+      calls = 0;
+      LatestDiagnosisService.reset();
+      LatestDiagnosisService.historyLoader = () async {
+        calls++;
+        return [entry('1', {'id': 'c1'}, '2026-11-16T10:19:00Z', 'x')];
+      };
+    });
+
+    test('the home card asks for only 10 entries', () {
+      expect(LatestDiagnosisService.homeHistoryLimit, 10);
+    });
+
+    test('coming back from a sub screen does not fetch again', () async {
+      await LatestDiagnosisService.forCarCached(land); // first load
+      await LatestDiagnosisService.forCarCached(land); // back from a sub screen
+      await LatestDiagnosisService.forCarCached(land); // and again
+      expect(calls, 1);
+    });
+
+    test('a new diagnosis, pull to refresh or another car refetch', () async {
+      await LatestDiagnosisService.forCarCached(land);
+      LatestDiagnosisService.invalidate();
+      await LatestDiagnosisService.forCarCached(land);
+      expect(calls, 2);
+      await LatestDiagnosisService.forCarCached(land, force: true);
+      expect(calls, 3);
+      await LatestDiagnosisService.forCarCached(sunny);
+      expect(calls, 4);
+    });
+  });
 }

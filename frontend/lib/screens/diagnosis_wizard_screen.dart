@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../services/latest_diagnosis_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
@@ -215,6 +216,7 @@ class _DiagnosisWizardScreenState extends State<DiagnosisWizardScreen> {
       if (response.statusCode == 200) {
         final result = Map<String, dynamic>.from(
             jsonDecode(utf8.decode(response.bodyBytes)));
+        LatestDiagnosisService.invalidate();
         if (!mounted) {
           return;
         }
