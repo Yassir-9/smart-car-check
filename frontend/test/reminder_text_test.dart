@@ -38,4 +38,17 @@ void main() {
     expect(reminderCalendarDays(DateTime(2027, 1, 1), DateTime(2026, 12, 31, 23, 59)), 1);
     expect(reminderCalendarDays(DateTime(2026, 3, 30), DateTime(2026, 3, 28, 12)), 2);
   });
+
+  test('a completed reminder says Done, never Overdue (past, today or future)', () {
+    final past = DateTime(2025, 9, 22); // 421 days ago
+    expect(reminderStatusText(ar, past, now, isDone: true), 'تم');
+    expect(reminderStatusText(en, past, now, isDone: true), 'Done');
+    expect(reminderStatusText(ar, past, now, isDone: true), isNot(contains('متأخر')));
+    expect(reminderStatusText(en, past, now, isDone: true), isNot(contains('Overdue')));
+    expect(reminderStatusText(ar, DateTime(2026, 11, 30), now, isDone: true), 'تم');
+    // not done: unchanged
+    expect(reminderStatusText(ar, past, now), startsWith('متأخر '));
+    expect(reminderStatusText(ar, past, now, isDone: false), startsWith('متأخر '));
+    expect(reminderStatusText(en, DateTime(2026, 11, 17), now), 'Today');
+  });
 }

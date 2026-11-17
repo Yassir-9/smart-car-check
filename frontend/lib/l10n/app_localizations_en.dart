@@ -1099,6 +1099,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reminderToday => 'Today';
 
   @override
+  String get reminderDone => 'Done';
+
+  @override
   String get reminderTomorrow => 'Tomorrow';
 
   @override

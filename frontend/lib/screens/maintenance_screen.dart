@@ -175,9 +175,9 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            daysLeft < 0
+                            daysLeft < 0 && !reminder.isDone
                                 ? reminderStatusText(l10n, reminder.dueDate, now)
-                                : '${reminderStatusText(l10n, reminder.dueDate, now)}${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
+                                : '${reminderStatusText(l10n, reminder.dueDate, now, isDone: reminder.isDone)}${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
                           ),
                           trailing: Checkbox(
                             value: reminder.isDone,

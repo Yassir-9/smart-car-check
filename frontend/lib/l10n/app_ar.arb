@@ -351,6 +351,7 @@
   "overdueDays": "متأخر {days} يوم",
   "@overdueDays": {"placeholders":{"days":{"type":"int"}}},
   "reminderToday": "اليوم",
+  "reminderDone": "تم",
   "reminderTomorrow": "غداً",
   "daysRemaining": "باقي {days} يوم",
   "@daysRemaining": {"placeholders":{"days":{"type":"int"}}},

@@ -9,7 +9,10 @@ int reminderCalendarDays(DateTime dueDate, DateTime now) =>
         .inDays;
 
 /// "Today" / "Tomorrow" / "N days remaining" / "Overdue by N days".
-String reminderStatusText(AppLocalizations l10n, DateTime dueDate, DateTime now) {
+/// A completed reminder is never "overdue": it just says "Done".
+String reminderStatusText(AppLocalizations l10n, DateTime dueDate, DateTime now,
+    {bool isDone = false}) {
+  if (isDone) return l10n.reminderDone;
   final days = reminderCalendarDays(dueDate, now);
   if (days < 0) return l10n.overdueDays(-days);
   if (days == 0) return l10n.reminderToday;

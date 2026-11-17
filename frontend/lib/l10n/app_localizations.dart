@@ -2138,6 +2138,12 @@ abstract class AppLocalizations {
   /// **'اليوم'**
   String get reminderToday;
 
+  /// No description provided for @reminderDone.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم'**
+  String get reminderDone;
+
   /// No description provided for @reminderTomorrow.
   ///
   /// In ar, this message translates to:

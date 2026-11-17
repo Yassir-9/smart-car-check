@@ -1081,6 +1081,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get reminderToday => 'اليوم';
 
   @override
+  String get reminderDone => 'تم';
+
+  @override
   String get reminderTomorrow => 'غداً';
 
   @override
