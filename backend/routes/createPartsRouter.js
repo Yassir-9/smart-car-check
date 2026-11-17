@@ -1,5 +1,5 @@
 const express = require('express');
-const { isMarketplaceWritesEnabled, requireFeature } = require('../config/features');
+const { isMarketplaceEnabled, isMarketplaceWritesEnabled, requireFeature } = require('../config/features');
 const {
   toPublicPart,
   toCompatibilityPart,
@@ -17,10 +17,13 @@ function createPartsRouter({
   logger,
   exposePublicContact = false,
   marketplaceWritesEnabled = () => isMarketplaceWritesEnabled(),
+  marketplaceEnabled = () => isMarketplaceEnabled(),
 }) {
   const router = express.Router();
   // Creating/updating listings is off by default (MARKETPLACE_WRITES_ENABLED=true).
   // Removing your own listing stays possible.
+  // The public listing is closed unless MARKETPLACE_ENABLED=true.
+  const readGate = requireFeature(marketplaceEnabled, localizedError);
   const writesGate = requireFeature(marketplaceWritesEnabled, localizedError);
 
   async function readParts() {
@@ -88,7 +91,7 @@ function createPartsRouter({
     }
   });
 
-  router.get('/parts', marketplaceReadLimiter, async (req, res) => {
+  router.get('/parts', readGate, marketplaceReadLimiter, async (req, res) => {
     try {
       const { brand, model } = req.query;
       let parts = await readParts();

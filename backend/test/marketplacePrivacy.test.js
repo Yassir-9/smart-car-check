@@ -88,7 +88,7 @@ function verifyToken(req, res, next) {
 const pass = (_req, _res, next) => next();
 const logger = { error() {} };
 
-function appWith({ uidLimiter = pass, ipLimiter = pass, exposePublicContact = false, writesEnabled = true } = {}) {
+function appWith({ uidLimiter = pass, ipLimiter = pass, exposePublicContact = false, writesEnabled = true, marketplaceEnabled = true } = {}) {
   const app = express();
   app.set('trust proxy', 1);
   app.use(express.json());
@@ -103,6 +103,7 @@ function appWith({ uidLimiter = pass, ipLimiter = pass, exposePublicContact = fa
     logger,
     exposePublicContact,
     marketplaceWritesEnabled: () => writesEnabled,
+    marketplaceEnabled: () => marketplaceEnabled,
   }));
   return app;
 }
@@ -303,4 +304,24 @@ test('creating and updating listings is blocked (403 FEATURE_DISABLED) while wri
     const remove = await fetch(`${baseUrl}/parts/part-1`, { method: 'DELETE', headers: { authorization: 'Bearer user-1' } });
     assert.notEqual(remove.status, 403);
   });
+});
+
+test('the public GET /parts is closed (403 FEATURE_DISABLED) while MARKETPLACE_ENABLED is off', async () => {
+  await withServer(appWith({ marketplaceEnabled: false }), async (baseUrl) => {
+    for (const query of ['', '?brand=Toyota&model=Camry']) {
+      const response = await fetch(`${baseUrl}/parts${query}`);
+      assert.equal(response.status, 403, query);
+      const body = await response.json();
+      assert.equal(body.code, 'FEATURE_DISABLED');
+      assert.equal(JSON.stringify(body).includes('ownerId'), false);
+    }
+  });
+});
+
+test('MARKETPLACE_ENABLED is off by default and only "true" turns it on', () => {
+  const { isMarketplaceEnabled } = require('../config/features');
+  assert.equal(isMarketplaceEnabled({}), false);
+  assert.equal(isMarketplaceEnabled({ MARKETPLACE_ENABLED: 'false' }), false);
+  assert.equal(isMarketplaceEnabled({ MARKETPLACE_ENABLED: '1' }), false);
+  assert.equal(isMarketplaceEnabled({ MARKETPLACE_ENABLED: 'true' }), true);
 });
