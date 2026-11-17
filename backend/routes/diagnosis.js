@@ -18,7 +18,7 @@ const { getFreeMonthlyLimit, getFreeMonthlyBeforeYouPayLimit } = require('../con
 const { limitReachedBody } = require('../services/usage/limitResponse');
 const { parseHistoryQuery, readHistoryPage } = require('../services/history/historyPage');
 const { DIAGNOSIS_FIELD, REPAIR_REVIEW_FIELD, reserveUsage, releaseUsage } = require('../services/usage/usageCounter');
-const { isMarketplaceWritesEnabled, isAskExpertEnabled, isExternalPartSearchEnabled, requireFeature } = require('../config/features');
+const { isMarketplaceWritesEnabled, isAskExpertEnabled, isExternalPartSearchEnabled, isDiagnosisFeedbackEnabled, requireFeature } = require('../config/features');
 const { localizedError } = require('../utils/localizedResponse');
 
 // If the first AI round trip already took this long, do not start a second one.
@@ -337,7 +337,7 @@ router.delete('/history/:id', verifyToken, async (req, res) => {
 });
 
 // تسجيل تقييم دقة التشخيص (يستخدم لتحسين النتائج المستقبلية)
-router.patch('/history/:id/feedback', verifyToken, async (req, res) => {
+router.patch('/history/:id/feedback', verifyToken, requireFeature(() => isDiagnosisFeedbackEnabled(), localizedError), async (req, res) => {
   try {
     const { accurate } = req.body;
     const docRef = db.collection('users').doc(req.uid).collection('history').doc(req.params.id);

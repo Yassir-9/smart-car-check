@@ -207,3 +207,23 @@ test('AI part search routes (/parts/external-search, /obd/part-search) answer 40
     delete process.env.EXTERNAL_PART_SEARCH_ENABLED;
   }
 }));
+
+test('PATCH /history/:id/feedback is disabled by default (403 FEATURE_DISABLED) and opens only with DIAGNOSIS_FEEDBACK_ENABLED=true', () => withServer(async (base) => {
+  delete process.env.DIAGNOSIS_FEEDBACK_ENABLED;
+  const patch = (locale) => fetch(`${base}/api/history/abc/feedback`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', 'x-test-uid': 'u1', 'x-app-locale': locale },
+    body: JSON.stringify({ accurate: true }),
+  });
+  for (const locale of ['en', 'ar']) {
+    const res = await patch(locale);
+    assert.equal(res.status, 403, locale);
+    assert.equal((await res.json()).code, 'FEATURE_DISABLED');
+  }
+  process.env.DIAGNOSIS_FEEDBACK_ENABLED = 'true';
+  try {
+    assert.equal((await patch('en')).status, 404); // passes the gate; the (fake) record does not exist
+  } finally {
+    delete process.env.DIAGNOSIS_FEEDBACK_ENABLED;
+  }
+}));
