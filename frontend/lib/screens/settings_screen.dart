@@ -342,10 +342,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            Icon(
-              Directionality.of(context) == TextDirection.rtl
-                  ? Icons.chevron_left
-                  : Icons.chevron_right,
+            const Icon(
+              Icons.chevron_right, // mirrors itself in RTL (matchTextDirection)
               size: 20,
               color: Colors.grey,
             ),

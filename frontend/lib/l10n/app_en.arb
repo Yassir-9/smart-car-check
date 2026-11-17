@@ -657,5 +657,13 @@
   "deleteAccountRecentAuthRequired": "Please confirm your identity again before deletion.",
   "deleteAccountNetworkError": "Could not reach the server. Your account has not been treated as deleted.",
   "accountDeletionLearnMore": "What happens to my data?",
-  "confirmAction": "Confirm"
+  "confirmAction": "Confirm",
+  "homeStatReminders": "Upcoming reminders",
+  "homeStatOpenIssues": "Open issues",
+  "homeStatLastCheck": "Last check",
+  "homeStatNone": "\u2014",
+  "relativeToday": "Today",
+  "relativeYesterday": "Yesterday",
+  "relativeDaysAgo": "{days} days ago",
+  "@relativeDaysAgo": {"placeholders":{"days":{"type":"int"}}}
 }

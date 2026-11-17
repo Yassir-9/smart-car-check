@@ -6,7 +6,9 @@ import '../l10n/app_localizations.dart';
 import '../models/vehicle_issue.dart';
 import '../services/car_health_service.dart';
 import 'part_search_sheet.dart';
-import '../theme/app_design_system.dart';
+import '../theme/app_design_system.dart' hide StatusChip;
+import '../theme/app_tokens.dart';
+import '../widgets/ui/ui.dart';
 import 'workshop_mode_screen.dart';
 import 'repair_verification_screen.dart';
 
@@ -40,11 +42,10 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
       .toList();
   String get _severity =>
       widget.result['severity_code'] ?? widget.result['severity'] ?? 'medium';
-  Color get _severityColor => switch (_severity) {
-        'critical' => AppColors.danger,
-        'high' || 'عالية' => AppColors.high,
-        'medium' || 'متوسطة' => AppColors.warning,
-        _ => AppColors.success,
+  StatusLevel get _severityLevel => switch (_severity) {
+        'critical' || 'high' || 'عالية' => StatusLevel.danger,
+        'medium' || 'متوسطة' => StatusLevel.warn,
+        _ => StatusLevel.ok,
       };
   String get _severityLabel => switch (_severity) {
         'critical' => AppLocalizations.of(context).severityCritical,
@@ -239,17 +240,16 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
-    return Card(
-        child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Icon(icon, size: 20, color: AppColors.accent),
-                const SizedBox(width: 8),
+                IconTile(icon, size: 36),
+                const SizedBox(width: Ui.s8),
                 Expanded(
                     child: Text(title,
-                        style: const TextStyle(fontWeight: FontWeight.w800)))
+                        style: const TextStyle(
+                            fontSize: Ui.sectionTitle,
+                            fontWeight: FontWeight.w700)))
               ]),
               const SizedBox(height: 10),
               ...items.map((e) => Padding(
@@ -262,7 +262,7 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                             child: Text(_bidi(e),
                                 style: const TextStyle(height: 1.5)))
                       ]))),
-            ])));
+            ]));
   }
 
   @override
@@ -281,65 +281,65 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
           maxWidth: 860,
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: _severityColor.withValues(alpha: .08),
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                border:
-                    Border.all(color: _severityColor.withValues(alpha: .25)),
-              ),
+            AppCard(
+              dark: true,
+              padding: const EdgeInsets.all(Ui.s24),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Wrap(
+                        spacing: Ui.s8,
+                        runSpacing: Ui.s8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Container(
-                              width: 46,
-                              height: 46,
-                              decoration: BoxDecoration(
-                                  color: _severityColor.withValues(alpha: .14),
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.md)),
-                              child: Icon(Icons.health_and_safety_outlined,
-                                  color: _severityColor)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                Text(l10n.severity,
-                                    style: AppTypography.caption),
-                                Text(_severityLabel,
-                                    style: AppTypography.title
-                                        .copyWith(color: _severityColor)),
-                              ])),
-                          if (confidence != null)
-                            StatusChip(
-                                label: l10n.confidencePercent(confidence),
-                                color: AppColors.accent),
-                        ]),
-                    const SizedBox(height: 16),
+                      Text(l10n.severity,
+                          style: const TextStyle(
+                              color: Ui.onDarkMuted, fontSize: Ui.secondary)),
+                      StatusChip(label: _severityLabel, level: _severityLevel),
+                      if (confidence != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                              color: Ui.darkTile,
+                              borderRadius: BorderRadius.circular(999)),
+                          child: Text(l10n.confidencePercent(confidence),
+                              style: const TextStyle(
+                                  color: Ui.onDark,
+                                  fontSize: Ui.secondary,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                    ]),
+                    const SizedBox(height: Ui.s16),
                     Text(
                         _bidi((widget.result['title'] ??
                                 widget.result['possible_issue'] ??
                                 l10n.diagnosisFallbackTitle)
                             .toString()),
-                        style: AppTypography.display),
-                    const SizedBox(height: 10),
-                    Text(l10n.canDrive, style: AppTypography.label),
-                    const SizedBox(height: 3),
+                        style: const TextStyle(
+                            color: Ui.onDark,
+                            fontSize: Ui.screenTitle,
+                            fontWeight: FontWeight.w700,
+                            height: 1.4)),
+                    const SizedBox(height: Ui.s12),
+                    Text(l10n.canDrive,
+                        style: const TextStyle(
+                            color: Ui.onDarkMuted,
+                            fontSize: Ui.secondary,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: Ui.s4),
                     Text(
                         driveAdvice.isEmpty
                             ? l10n.noDriveAdvice
                             : _bidi(driveAdvice.toString()),
-                        style:
-                            AppTypography.body.copyWith(color: _severityColor)),
+                        style: const TextStyle(
+                            color: Ui.onDark,
+                            fontSize: Ui.body,
+                            height: 1.6)),
                   ]),
             ),
             const SizedBox(height: 20),
-            AppSectionHeader(title: l10n.whatWeFound),
+            SectionTitle(l10n.whatWeFound),
             const SizedBox(height: 6),
             Text(
                 _bidi((widget.result['summary'] ??
@@ -354,14 +354,12 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                       padding: const EdgeInsets.all(14),
                       child: Text(l10n.faultReturnedAfterRepair,
                           style: const TextStyle(
-                              color: AppColors.danger,
-                              fontWeight: FontWeight.w800))))
+                              color: Ui.dangerText,
+                              fontWeight: FontWeight.w700))))
             ],
             if (obd.isNotEmpty) ...[
               const SizedBox(height: 18),
-              Text(l10n.faultCodes,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w800)),
+              SectionTitle(l10n.faultCodes),
               const SizedBox(height: 8),
               ...obd.map((item) => Card(
                   child: ListTile(
@@ -397,14 +395,15 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(l10n.doNotReplaceBeforeInspection,
                       style: const TextStyle(
-                          color: AppColors.warning,
+                          color: Ui.warnText,
                           fontWeight: FontWeight.w700))),
               const SizedBox(height: 12),
             ],
-            OutlinedButton.icon(
+            SecondaryButton(
                 onPressed: _showWorkshopMode,
-                icon: const Icon(Icons.handyman_outlined),
-                label: Text(l10n.openWorkshopMode)),
+                icon: Icons.handyman_outlined,
+                expand: true,
+                label: l10n.openWorkshopMode),
             const SizedBox(height: 16),
             Card(
                 child: Padding(
@@ -422,33 +421,33 @@ class _DiagnosisResultScreenState extends State<DiagnosisResultScreen> {
                               style: const TextStyle(height: 1.6))
                         ]))),
             const SizedBox(height: 16),
-            SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                    onPressed: _savedIssue != null || _saving ? null : _save,
-                    icon: const Icon(Icons.bookmark_add_outlined),
-                    label: Text(_savedIssue != null
-                        ? l10n.savedToCarRecord
-                        : _saving
-                            ? l10n.saving
-                            : l10n.saveToCarRecord))),
+            PrimaryButton(
+                onPressed: _savedIssue != null || _saving ? null : _save,
+                icon: Icons.bookmark_add_outlined,
+                label: _savedIssue != null
+                    ? l10n.savedToCarRecord
+                    : _saving
+                        ? l10n.saving
+                        : l10n.saveToCarRecord),
             if (_savedIssue != null) ...[
               const SizedBox(height: 10),
-              OutlinedButton.icon(
+              SecondaryButton(
                   onPressed: _showRepairDialog,
-                  icon: const Icon(Icons.task_alt),
-                  label: Text(l10n.recordRepair)),
+                  icon: Icons.task_alt,
+                  expand: true,
+                  label: l10n.recordRepair),
               const SizedBox(height: 8),
-              OutlinedButton.icon(
+              SecondaryButton(
+                  expand: true,
+                  icon: Icons.fact_check_outlined,
+                  label: l10n.verifyRepairLater,
                   onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                           builder: (_) => RepairVerificationScreen(
                               car: widget.car,
                               beforeCodes: _obdCodeLabels,
-                              beforeSymptoms: widget.symptoms))),
-                  icon: const Icon(Icons.fact_check_outlined),
-                  label: Text(l10n.verifyRepairLater))
+                              beforeSymptoms: widget.symptoms))))
             ],
             const SizedBox(height: 18),
             Text(l10n.diagnosisSafetyDisclaimer,

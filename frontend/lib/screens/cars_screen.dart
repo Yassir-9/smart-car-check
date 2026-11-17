@@ -5,7 +5,9 @@ import '../services/car_service.dart';
 import '../data/car_models_data.dart';
 import '../models/maintenance_reminder.dart';
 import '../services/maintenance_service.dart';
-import '../theme/app_design_system.dart';
+import '../theme/app_design_system.dart' hide StatusChip;
+import '../theme/app_tokens.dart';
+import '../widgets/ui/ui.dart';
 import '../utils/localized_vehicle_text.dart';
 
 class CarsScreen extends StatefulWidget {
@@ -160,7 +162,7 @@ class _CarsScreenState extends State<CarsScreen> {
               children: [
                 Text(l10n.manufacturer,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                        const TextStyle(fontSize: 12.5, color: Ui.textSecondary)),
                 const SizedBox(height: 4),
                 DropdownButtonFormField<String>(
                   initialValue: selectedBrand,
@@ -186,7 +188,7 @@ class _CarsScreenState extends State<CarsScreen> {
                 const SizedBox(height: 12),
                 Text(l10n.carModel,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                        const TextStyle(fontSize: 12.5, color: Ui.textSecondary)),
                 const SizedBox(height: 4),
                 Builder(builder: (context) {
                   final models = CarModelsData.modelsByBrand[selectedBrand] ??
@@ -232,7 +234,7 @@ class _CarsScreenState extends State<CarsScreen> {
                 const SizedBox(height: 12),
                 Text(l10n.manufactureYear,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                        const TextStyle(fontSize: 12.5, color: Ui.textSecondary)),
                 const SizedBox(height: 4),
                 DropdownButtonFormField<int>(
                   initialValue: selectedYear,
@@ -250,25 +252,25 @@ class _CarsScreenState extends State<CarsScreen> {
                 const SizedBox(height: 16),
                 Text(l10n.vinOptional,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                        const TextStyle(fontSize: 12.5, color: Ui.textSecondary)),
                 const SizedBox(height: 4),
                 TextField(controller: vinController),
                 const SizedBox(height: 12),
                 Text(l10n.engineTypeOptional,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                        const TextStyle(fontSize: 12.5, color: Ui.textSecondary)),
                 const SizedBox(height: 4),
                 TextField(controller: engineController),
                 const SizedBox(height: 12),
                 Text(l10n.transmissionTypeOptional,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                        const TextStyle(fontSize: 12.5, color: Ui.textSecondary)),
                 const SizedBox(height: 4),
                 TextField(controller: transmissionController),
                 const SizedBox(height: 16),
                 Text(l10n.currentMileageOptional,
                     style:
-                        const TextStyle(fontSize: 12, color: AppColors.steel)),
+                        const TextStyle(fontSize: 12.5, color: Ui.textSecondary)),
                 const SizedBox(height: 4),
                 TextField(
                   controller: mileageController,
@@ -472,62 +474,73 @@ class _CarsScreenState extends State<CarsScreen> {
                           final car = _cars[index];
                           final isActive = car.id == _activeCarId;
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: const EdgeInsets.only(bottom: Ui.s12),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                              color: Ui.card,
+                              borderRadius: BorderRadius.circular(Ui.rCard),
                               border: Border.all(
-                                color: isActive
-                                    ? AppColors.accent
-                                    : Theme.of(context).dividerColor,
+                                color: isActive ? Ui.primary : Ui.border,
                                 width: isActive ? 2 : 1,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.midnight
-                                      .withValues(alpha: 0.035),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
                             ),
                             child: ListTile(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(Ui.rCard)),
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              leading: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color:
-                                      AppColors.accent.withValues(alpha: 0.09),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.directions_car_filled,
-                                    color: AppColors.accent),
-                              ),
+                                  horizontal: Ui.s16, vertical: Ui.s8),
+                              leading: const IconTile(
+                                  Icons.directions_car_filled,
+                                  size: 44),
                               title: Text(
                                   '${l10n.carBrand(car.brand)} ${car.model} (${car.year})',
                                   style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold)),
-                              subtitle: Text(
-                                  '${car.currentMileage == null ? l10n.mileageNotRecorded : '${car.currentMileage} ${l10n.kmShort}'}${isActive ? '  •  ${l10n.activeVehicle}' : ''}',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: isActive
-                                          ? AppColors.accent
-                                          : AppColors.steel)),
+                                      fontSize: Ui.body,
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: Ui.s4),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                        car.currentMileage == null
+                                            ? l10n.mileageNotRecorded
+                                            : '${car.currentMileage} ${l10n.kmShort}',
+                                        style: const TextStyle(
+                                            fontSize: Ui.secondary,
+                                            color: Ui.textSecondary)),
+                                    if (isActive)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                            top: Ui.s4),
+                                        child: StatusChip(
+                                            label: l10n.activeVehicle,
+                                            level: StatusLevel.ok),
+                                      ),
+                                  ],
+                                ),
+                              ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
+                                    tooltip: l10n.editCar,
+                                    constraints: const BoxConstraints(
+                                        minWidth: Ui.minTouch,
+                                        minHeight: Ui.minTouch),
                                     icon: const Icon(Icons.edit_outlined,
-                                        size: 20, color: AppColors.steel),
+                                        size: 22, color: Ui.textSecondary),
                                     onPressed: () =>
                                         _addOrEditCar(existing: car),
                                   ),
                                   IconButton(
+                                    tooltip: l10n.delete,
+                                    constraints: const BoxConstraints(
+                                        minWidth: Ui.minTouch,
+                                        minHeight: Ui.minTouch),
                                     icon: const Icon(Icons.delete_outline,
-                                        size: 20, color: AppColors.steel),
+                                        size: 22, color: Ui.textSecondary),
                                     onPressed: () => _deleteCar(car.id),
                                   ),
                                 ],
@@ -545,7 +558,7 @@ class _CarsScreenState extends State<CarsScreen> {
         icon: const Icon(Icons.add, color: Colors.white),
         label:
             Text(l10n.addNewCar, style: const TextStyle(color: Colors.white)),
-        backgroundColor: AppColors.accent,
+        backgroundColor: Ui.primary,
       ),
     );
   }

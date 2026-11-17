@@ -447,7 +447,7 @@ class _BeforeYouPayScreenState extends State<BeforeYouPayScreen> {
                                   _step--;
                                   _error = null;
                                 }),
-                        icon: const Icon(Icons.arrow_forward))),
+                        icon: const Icon(Icons.arrow_back))),
                 const SizedBox(width: 10)
               ],
               Expanded(
@@ -456,7 +456,7 @@ class _BeforeYouPayScreenState extends State<BeforeYouPayScreen> {
                           ? null
                           : (_step < 2 ? _continue : _submit),
                       icon: Icon(_step < 2
-                          ? Icons.arrow_back
+                          ? Icons.arrow_forward
                           : Icons.fact_check_outlined),
                       label: Text(_step < 2
                           ? AppLocalizations.of(context).next

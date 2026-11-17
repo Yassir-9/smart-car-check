@@ -7,7 +7,9 @@ import '../l10n/app_localizations.dart';
 import '../models/maintenance_reminder.dart';
 import '../services/maintenance_service.dart';
 import '../services/notification_service.dart';
-import '../theme/app_design_system.dart';
+import '../theme/app_design_system.dart' hide StatusChip;
+import '../theme/app_tokens.dart';
+import '../widgets/ui/ui.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -124,15 +126,18 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                   actionLabel: l10n.addReminder,
                   onAction: _addReminder)
               : ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  // Bottom space keeps the floating button off the last card.
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md,
+                      AppSpacing.md, AppSpacing.md, Ui.listBottomInset),
                   itemCount: _reminders.length,
                   itemBuilder: (context, index) {
                     final reminder = _reminders[index];
                     final now = DateTime.now();
-                    final daysLeft = reminderCalendarDays(reminder.dueDate, now);
+                    final daysLeft =
+                        reminderCalendarDays(reminder.dueDate, now);
                     final isOverdue = daysLeft < 0 && !reminder.isDone;
                     final isSoon =
-                        daysLeft >= 0 && daysLeft <= 7 && !reminder.isDone;
+                        daysLeft >= 0 && daysLeft <= 14 && !reminder.isDone;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -142,7 +147,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                         direction: DismissDirection.endToStart,
                         onDismissed: (_) => _deleteReminder(reminder),
                         background: Container(
-                          color: AppColors.danger,
+                          color: Ui.dangerText,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: const Icon(Icons.delete, color: Colors.white),
@@ -150,34 +155,56 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 7),
-                          leading: Icon(
+                          leading: IconTile(
                             reminder.isDone
-                                ? Icons.check_circle
+                                ? Icons.check_circle_outline
                                 : isOverdue
-                                    ? Icons.warning
+                                    ? Icons.warning_amber_rounded
                                     : isSoon
-                                        ? Icons.notifications_active
-                                        : Icons.event,
+                                        ? Icons.notifications_active_outlined
+                                        : Icons.event_outlined,
+                            size: 44,
                             color: reminder.isDone
-                                ? AppColors.success
+                                ? Ui.okText
                                 : isOverdue
-                                    ? AppColors.danger
+                                    ? Ui.dangerText
                                     : isSoon
-                                        ? AppColors.warning
-                                        : AppColors.accent,
+                                        ? Ui.warnText
+                                        : Ui.primaryText,
                           ),
                           title: Text(
                             _displayTitle(reminder),
                             style: TextStyle(
+                              fontWeight: FontWeight.w600,
                               decoration: reminder.isDone
                                   ? TextDecoration.lineThrough
                                   : null,
                             ),
                           ),
-                          subtitle: Text(
-                            daysLeft < 0 && !reminder.isDone
-                                ? reminderStatusText(l10n, reminder.dueDate, now)
-                                : '${reminderStatusText(l10n, reminder.dueDate, now, isDone: reminder.isDone)}${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: Ui.s4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                StatusChip(
+                                  label: reminderStatusText(
+                                      l10n, reminder.dueDate, now,
+                                      isDone: reminder.isDone),
+                                  level: reminderChipLevel(daysLeft,
+                                      isDone: reminder.isDone),
+                                  icon: reminder.isDone ? null : Icons.schedule,
+                                ),
+                                if (reminder.notes != null &&
+                                    !(daysLeft < 0 && !reminder.isDone))
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: Ui.s4),
+                                    child: Text(reminder.notes!,
+                                        style: const TextStyle(
+                                            fontSize: Ui.secondary,
+                                            color: Ui.textSecondary)),
+                                  ),
+                              ],
+                            ),
                           ),
                           trailing: Checkbox(
                             value: reminder.isDone,

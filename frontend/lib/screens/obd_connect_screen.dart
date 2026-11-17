@@ -452,7 +452,7 @@ class _ObdConnectScreenState extends State<ObdConnectScreen> {
                   dimension: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.chevron_left),
+              : const Icon(Icons.chevron_right),
           onTap: _connecting ? null : () => _connect(device),
         ),
       );

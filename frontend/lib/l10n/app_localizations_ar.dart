@@ -2005,4 +2005,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get confirmAction => 'تأكيد';
+
+  @override
+  String get homeStatReminders => 'تذكيرات قادمة';
+
+  @override
+  String get homeStatOpenIssues => 'أعطال مفتوحة';
+
+  @override
+  String get homeStatLastCheck => 'آخر فحص';
+
+  @override
+  String get homeStatNone => '—';
+
+  @override
+  String get relativeToday => 'اليوم';
+
+  @override
+  String get relativeYesterday => 'أمس';
+
+  @override
+  String relativeDaysAgo(int days) {
+    return 'قبل $days يوم';
+  }
 }

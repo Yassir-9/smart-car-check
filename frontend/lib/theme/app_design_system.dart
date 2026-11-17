@@ -108,7 +108,7 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: dark ? AppColors.darkCanvas : AppColors.canvas,
       cardColor: dark ? AppColors.darkSurface : AppColors.surface,
-      fontFamily: 'NotoSansArabic',
+      fontFamily: 'IBMPlexSansArabic',
       visualDensity: VisualDensity.standard,
       dividerColor: dark ? AppColors.darkBorder : AppColors.border,
       appBarTheme: AppBarTheme(
