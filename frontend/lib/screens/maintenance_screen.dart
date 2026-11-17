@@ -126,12 +126,15 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                   actionLabel: l10n.addReminder,
                   onAction: _addReminder)
               : ListView.builder(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  // Bottom space keeps the floating button off the last card.
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md,
+                      AppSpacing.md, AppSpacing.md, Ui.listBottomInset),
                   itemCount: _reminders.length,
                   itemBuilder: (context, index) {
                     final reminder = _reminders[index];
                     final now = DateTime.now();
-                    final daysLeft = reminderCalendarDays(reminder.dueDate, now);
+                    final daysLeft =
+                        reminderCalendarDays(reminder.dueDate, now);
                     final isOverdue = daysLeft < 0 && !reminder.isDone;
                     final isSoon =
                         daysLeft >= 0 && daysLeft <= 14 && !reminder.isDone;
@@ -189,15 +192,12 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                                       isDone: reminder.isDone),
                                   level: reminderChipLevel(daysLeft,
                                       isDone: reminder.isDone),
-                                  icon: reminder.isDone
-                                      ? null
-                                      : Icons.schedule,
+                                  icon: reminder.isDone ? null : Icons.schedule,
                                 ),
                                 if (reminder.notes != null &&
                                     !(daysLeft < 0 && !reminder.isDone))
                                   Padding(
-                                    padding:
-                                        const EdgeInsets.only(top: Ui.s4),
+                                    padding: const EdgeInsets.only(top: Ui.s4),
                                     child: Text(reminder.notes!,
                                         style: const TextStyle(
                                             fontSize: Ui.secondary,

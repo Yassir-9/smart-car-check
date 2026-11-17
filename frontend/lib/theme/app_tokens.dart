@@ -52,6 +52,8 @@ class Ui {
   static const double secondary = 12.5;
 
   // Minimum touch target
+  /// Space under scrolling lists so the floating button never hides the last item.
+  static const double listBottomInset = 96;
   static const double minTouch = 48;
 
   static const fontFamily = 'IBMPlexSansArabic';

@@ -214,6 +214,17 @@ void main() {
 }
 
 void reminderChipTests() {
+  group('reminder list space', () {
+    test('keeps >= 96 dp under the list for the floating button', () {
+      expect(Ui.listBottomInset, greaterThanOrEqualTo(96));
+      expect(
+          File('lib/screens/maintenance_screen.dart')
+              .readAsStringSync()
+              .contains('Ui.listBottomInset'),
+          isTrue);
+    });
+  });
+
   group('reminder chip level', () {
     test('only a done reminder is green', () {
       expect(reminderChipLevel(30, isDone: true), StatusLevel.ok);
