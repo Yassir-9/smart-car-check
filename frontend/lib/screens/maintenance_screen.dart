@@ -1,3 +1,4 @@
+import '../utils/reminder_text.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/maintenance_reminder.dart';
@@ -116,7 +117,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                   itemBuilder: (context, index) {
                     final reminder = _reminders[index];
                     final now = DateTime.now();
-                    final daysLeft = reminder.dueDate.difference(now).inDays;
+                    final daysLeft = reminderCalendarDays(reminder.dueDate, now);
                     final isOverdue = daysLeft < 0 && !reminder.isDone;
                     final isSoon =
                         daysLeft >= 0 && daysLeft <= 7 && !reminder.isDone;
@@ -162,9 +163,9 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            isOverdue
-                                ? l10n.overdueDays(-daysLeft)
-                                : '${l10n.daysRemaining(daysLeft)}${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
+                            daysLeft < 0
+                                ? reminderStatusText(l10n, reminder.dueDate, now)
+                                : '${reminderStatusText(l10n, reminder.dueDate, now)}${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
                           ),
                           trailing: Checkbox(
                             value: reminder.isDone,
