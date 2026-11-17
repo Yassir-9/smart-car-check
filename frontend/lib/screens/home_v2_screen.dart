@@ -1,5 +1,6 @@
 import '../config/feature_flags.dart';
 import '../utils/bidi_text.dart';
+import '../utils/reminder_title.dart';
 import '../utils/localized_vehicle_text.dart';
 import 'package:flutter/material.dart';
 import '../config/app_brand.dart';
@@ -514,29 +515,13 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                             ]))
                       ]))));
 
-  String _reminderDisplayTitle(MaintenanceReminder reminder) {
-    final l10n = AppLocalizations.of(context);
-    final id = reminder.id;
-    String? type;
-    if (id.endsWith('_registration')) {
-      type = l10n.registrationExpiry;
-    } else if (id.endsWith('_insurance')) {
-      type = l10n.insuranceExpiry;
-    } else if (id.endsWith('_inspection')) {
-      type = l10n.inspectionExpiry;
-    }
-    if (type == null) return reminder.title;
+  String _reminderDisplayTitle(MaintenanceReminder reminder) =>
+      reminderDisplayTitle(
+          l10n: AppLocalizations.of(context),
+          languageCode: Localizations.localeOf(context).languageCode,
+          reminder: reminder,
+          cars: _allCars);
 
-    final carId = id.substring(0, id.lastIndexOf('_'));
-    final cars = _allCars;
-    for (final car in cars) {
-      if (car.id == carId) {
-        final lang = Localizations.localeOf(context).languageCode;
-        return '$type - ${l10n.carBrand(car.brand)} ${l10n.localizedCarModel(car.model, lang)} - ${car.year}';
-      }
-    }
-    return reminder.title;
-  }
   /// The newest of: the latest saved diagnosis (History source) and the latest
   /// recorded vehicle issue (Firestore); empty state only when both are absent.
   Widget _latestCheckChild(AppLocalizations l10n) {

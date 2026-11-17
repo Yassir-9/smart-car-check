@@ -1,4 +1,7 @@
+import '../models/car_model.dart';
+import '../services/car_service.dart';
 import '../utils/reminder_text.dart';
+import '../utils/reminder_title.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/maintenance_reminder.dart';
@@ -15,6 +18,7 @@ class MaintenanceScreen extends StatefulWidget {
 
 class _MaintenanceScreenState extends State<MaintenanceScreen> {
   List<MaintenanceReminder> _reminders = [];
+  List<CarModel> _cars = [];
   bool _loading = true;
 
   @override
@@ -23,9 +27,17 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     _loadReminders();
   }
 
+  String _displayTitle(MaintenanceReminder r) => reminderDisplayTitle(
+      l10n: AppLocalizations.of(context),
+      languageCode: Localizations.localeOf(context).languageCode,
+      reminder: r,
+      cars: _cars);
+
   Future<void> _loadReminders() async {
     final reminders = await MaintenanceService.loadReminders();
+    final cars = await CarService.loadCars();
     setState(() {
+      _cars = cars;
       _reminders = reminders;
       _reminders.sort((a, b) => a.dueDate.compareTo(b.dueDate));
       _loading = false;
@@ -36,7 +48,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       } else {
         await NotificationService.scheduleReminder(
           reminderId: r.id,
-          title: r.title,
+          title: _displayTitle(r),
           dueDate: r.dueDate,
         );
       }
@@ -80,7 +92,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     } else {
       await NotificationService.scheduleReminder(
         reminderId: reminder.id,
-        title: reminder.title,
+        title: _displayTitle(reminder),
         dueDate: reminder.dueDate,
       );
     }
@@ -155,7 +167,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                                         : AppColors.accent,
                           ),
                           title: Text(
-                            reminder.title,
+                            _displayTitle(reminder),
                             style: TextStyle(
                               decoration: reminder.isDone
                                   ? TextDecoration.lineThrough
