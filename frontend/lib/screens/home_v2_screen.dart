@@ -1,4 +1,5 @@
 import '../config/feature_flags.dart';
+import '../utils/bidi_text.dart';
 import '../utils/localized_vehicle_text.dart';
 import 'package:flutter/material.dart';
 import '../config/app_brand.dart';
@@ -7,6 +8,7 @@ import '../models/maintenance_reminder.dart';
 import '../models/vehicle_issue.dart';
 import '../services/car_health_service.dart';
 import '../services/car_service.dart';
+import '../services/latest_diagnosis_service.dart';
 import '../services/maintenance_service.dart';
 import '../theme/app_design_system.dart';
 import 'before_you_pay_screen.dart';
@@ -35,6 +37,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
   CarModel? _car;
   List<CarModel> _allCars = [];
   List<VehicleIssue> _issues = [];
+  LatestDiagnosis? _latestDiagnosis;
   List<MaintenanceReminder> _reminders = [];
   List<Map<String, dynamic>> _repairs = [];
 
@@ -59,11 +62,14 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
           ? <Map<String, dynamic>>[]
           : await CarHealthService.loadRepairs(car.id);
       final reminders = await MaintenanceService.loadReminders();
+      final latestDiagnosis =
+          car == null ? null : await LatestDiagnosisService.forCar(car);
       if (mounted) {
         setState(() {
           _car = car;
           _allCars = cars;
           _issues = issues;
+          _latestDiagnosis = latestDiagnosis;
           _repairs = repairs;
           _reminders = reminders;
           _loading = false;
@@ -531,6 +537,45 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     }
     return reminder.title;
   }
+  /// The newest of: the latest saved diagnosis (History source) and the latest
+  /// recorded vehicle issue (Firestore); empty state only when both are absent.
+  Widget _latestCheckChild(AppLocalizations l10n) {
+    final diagnosis = _latestDiagnosis;
+    final issue = _issues.isEmpty ? null : _issues.first;
+    final useDiagnosis =
+        diagnosis != null && (issue == null || !issue.date.isAfter(diagnosis.date));
+    if (useDiagnosis) {
+      final d = diagnosis.date.toLocal();
+      return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.fact_check_outlined, color: AppColors.accent),
+          title: Text(bidiText(context, diagnosis.title),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text('${d.year}/${d.month}/${d.day}'));
+    }
+    if (issue == null) {
+      return _CompactEmpty(
+          icon: Icons.fact_check_outlined,
+          text: l10n.noPreviousCheck,
+          color: AppColors.unknown);
+    }
+    return ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(issue.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(issue.obdCodes.join(l10n.localeName == 'ar' ? '، ' : ', '),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: StatusChip(
+            label: issue.status == 'repaired' ? l10n.repaired : l10n.followUp,
+            color: issue.status == 'repaired'
+                ? AppColors.success
+                : AppColors.warning));
+  }
+
   Widget _activityOverview(bool isWide) {
     final l10n = AppLocalizations.of(context);
     final maintenance = _overviewSection(
@@ -552,29 +597,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     final latest = _overviewSection(
       title: l10n.latestCheck,
       onOpen: () => _open(const HistoryScreen()),
-      child: _issues.isEmpty
-          ? _CompactEmpty(
-              icon: Icons.fact_check_outlined,
-              text: l10n.noPreviousCheck,
-              color: AppColors.unknown)
-          : ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(_issues.first.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text(
-                  _issues.first.obdCodes
-                      .join(l10n.localeName == 'ar' ? '، ' : ', '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              trailing: StatusChip(
-                  label: _issues.first.status == 'repaired'
-                      ? l10n.repaired
-                      : l10n.followUp,
-                  color: _issues.first.status == 'repaired'
-                      ? AppColors.success
-                      : AppColors.warning)),
+      child: _latestCheckChild(l10n),
     );
     if (!isWide) {
       return Column(
