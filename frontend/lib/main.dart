@@ -22,6 +22,10 @@ void main() async {
   runApp(const CarAiApp());
 }
 
+/// The app always runs in the light theme, whatever the system or the saved
+/// preference says (PR 11 colours are fixed for light screens).
+const ThemeMode kForcedThemeMode = ThemeMode.light;
+
 class CarAiApp extends StatefulWidget {
   final Stream<User?>? authStateChanges;
 
@@ -65,7 +69,10 @@ class _CarAiAppState extends State<CarAiApp> {
       ],
       theme: AppUiTheme.light(),
       darkTheme: AppUiTheme.dark(),
-      themeMode: themeNotifier.value ? ThemeMode.dark : ThemeMode.light,
+      // The unified UI is designed for light screens (dark cards inside).
+      // The saved dark-mode flag and the dark theme are kept in the code but
+      // not used for now: see [kForcedThemeMode].
+      themeMode: kForcedThemeMode,
       builder: (context, child) {
         return Directionality(
           textDirection: localeNotifier.value == 'en'

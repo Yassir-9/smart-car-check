@@ -7,6 +7,9 @@ import 'cars_screen.dart';
 import '../l10n/app_localizations.dart';
 import 'account_privacy_screen.dart';
 
+/// Turn on again together with removing the forced light theme in main.dart.
+const bool kShowDarkModeOption = false;
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -56,15 +59,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: _sectionDecoration(cardColor),
               child: Column(
                 children: [
-                  _switchRow(
-                    icon: isDark ? Icons.dark_mode : Icons.light_mode,
-                    title: l10n.darkMode,
-                    subtitle:
-                        isDark ? l10n.darkModeEnabled : l10n.lightModeEnabled,
-                    value: isDark,
-                    onChanged: (_) => themeNotifier.toggle(),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  // Hidden while the app is forced to the light theme.
+                  if (kShowDarkModeOption) ...[
+                    _switchRow(
+                      icon: isDark ? Icons.dark_mode : Icons.light_mode,
+                      title: l10n.darkMode,
+                      subtitle:
+                          isDark ? l10n.darkModeEnabled : l10n.lightModeEnabled,
+                      value: isDark,
+                      onChanged: (_) => themeNotifier.toggle(),
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                  ],
                   _dropdownRow(
                     icon: Icons.language,
                     title: l10n.language,
