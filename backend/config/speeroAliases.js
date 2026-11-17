@@ -1,5 +1,5 @@
 // Small dictionary: part term (English, as the AI writes it) -> the term that gives the
-// best results on speero.net. ONLY terms checked by hand in a browser (first 8 results
+// best results on speero.net. ONLY ASCII terms checked by hand in a browser (first 8 results
 // relevant, 2026-11-17) belong here. Do not add a guess; see
 // BUILDS-20261116/speero-aliases-20261117.md for what was tried and rejected.
 //
@@ -7,8 +7,8 @@
 const SPEERO_ALIASES = new Map([
   // "MAF Sensor" returned crankshaft sensors (0 of 8); "Air Flow Sensor" returns air-flow sensors.
   ['maf sensor', 'Air Flow Sensor'],
-  // "Transmission Mounts" returned one engine+gearbox mount set; the Arabic term returns 8 of 8 gearbox mounts.
-  ['transmission mounts', 'كرسي قير'],
+  // Fixed rule: every term sent to Speero is ASCII only. Arabic search text shows up encoded and
+  // broken on iPhone, so no Arabic entry belongs here (a test enforces it).
 ]);
 
 function normalizeAliasKey(term) {

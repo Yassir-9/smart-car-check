@@ -9,7 +9,7 @@ const speero = (part, extra = {}) => buildDestination('speero', { q: part, field
 test('known terms are replaced, ignoring case and extra spaces', () => {
   assert.equal(speeroTerm('MAF Sensor'), 'Air Flow Sensor');
   assert.equal(speeroTerm('  maf   SENSOR '), 'Air Flow Sensor');
-  assert.equal(speeroTerm('Transmission Mounts'), 'كرسي قير');
+  assert.equal(speeroTerm('Transmission Mounts'), 'Transmission Mounts');
 });
 
 test('terms that are not in the dictionary are returned untouched', () => {
@@ -26,8 +26,15 @@ test('odd or hostile text never reaches the dictionary as a key and is not alter
   assert.equal(normalizeAliasKey(null), '');
 });
 
+test('the dictionary is ASCII only: no key or value has a non-ASCII character', () => {
+  for (const [key, value] of SPEERO_ALIASES) {
+    assert.match(key, /^[ -~]+$/, `non-ASCII key: ${key}`);
+    assert.match(value, /^[ -~]+$/, `non-ASCII value for ${key}`);
+  }
+});
+
 test('every entry is a plain, short, safe constant', () => {
-  assert.ok(SPEERO_ALIASES.size >= 2);
+  assert.ok(SPEERO_ALIASES.size >= 1);
   for (const [key, value] of SPEERO_ALIASES) {
     assert.equal(key, normalizeAliasKey(key));
     assert.match(value, /^[\p{L}\p{N} ]{2,40}$/u);
@@ -37,7 +44,7 @@ test('every entry is a plain, short, safe constant', () => {
 
 test('the Speero redirect uses the alias, once encoded, and ignores make/model/year', () => {
   assert.equal(speero('MAF Sensor', { make: 'Toyota', model: 'Camry', year: '2020' }).url, 'https://speero.net/search?q=Air%20Flow%20Sensor');
-  assert.equal(speero('Transmission Mounts').url, 'https://speero.net/search?q=' + encodeURIComponent('كرسي قير'));
+  assert.equal(speero('Transmission Mounts').url, 'https://speero.net/search?q=Transmission%20Mounts');
   assert.equal(speero('Spark Plugs').url, 'https://speero.net/search?q=Spark%20Plugs');
 });
 
