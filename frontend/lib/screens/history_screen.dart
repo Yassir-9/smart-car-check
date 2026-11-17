@@ -5,7 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_config.dart';
 import '../l10n/app_localizations.dart';
-import '../theme/app_design_system.dart';
+import '../theme/app_design_system.dart' hide StatusChip;
+import '../theme/app_tokens.dart';
+import '../utils/bidi_text.dart';
+import '../widgets/ui/ui.dart';
 
 class HistoryScreen extends StatefulWidget {
   final bool embedded;
@@ -169,13 +172,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Color _severityColor(String? severity) {
     switch (severity) {
       case 'high':
-        return AppColors.danger;
+        return Ui.dangerText;
       case 'medium':
-        return AppColors.warning;
+        return Ui.warnText;
       case 'low':
-        return AppColors.success;
+        return Ui.okText;
       default:
-        return AppColors.unknown;
+        return Ui.textSecondary;
     }
   }
 
@@ -315,7 +318,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _buildFilterBar() {
     return SizedBox(
-      height: 44,
+      height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -325,19 +328,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
           final filter = _filters[index];
           final isSelected = filter == _selectedFilter;
           final color =
-              filter == 'all' ? AppColors.accent : _severityColor(filter);
+              filter == 'all' ? Ui.primaryText : _severityColor(filter);
           return ChoiceChip(
             label: Text(_severityLabel(filter)),
             selected: isSelected,
             onSelected: (_) => setState(() => _selectedFilter = filter),
             selectedColor: color.withValues(alpha: 0.15),
             labelStyle: TextStyle(
-              color: isSelected ? color : AppColors.steel,
+              color: isSelected ? color : Ui.textSecondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               fontSize: 13,
             ),
             side: BorderSide(
-              color: isSelected ? color : AppColors.border,
+              color: isSelected ? color : Ui.border,
             ),
             backgroundColor: Colors.transparent,
           );
@@ -373,7 +376,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ? l10n.historyEmpty
                   : '${l10n.historyNoFiltered} "${_severityLabel(_selectedFilter)}"',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.muted),
+              style: const TextStyle(fontSize: 13, color: Ui.textSecondary),
             ),
           ],
         ),
@@ -392,57 +395,56 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ? '${l10n.carBrand((car['brand'] ?? '').toString())} ${l10n.localizedCarModel((car['model'] ?? '').toString(), Localizations.localeOf(context).languageCode)} - ${car['year'] ?? ''}'
         : null;
 
-    return InkWell(
-      onTap: () => _showDetails(item),
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.midnight.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+    final level = switch (severity) {
+      'high' => StatusLevel.danger,
+      'medium' => StatusLevel.warn,
+      _ => StatusLevel.ok,
+    };
+    final title = bidiText(
+        context, (result['possible_issue'] ?? l10n.historyUntitled).toString());
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Ui.s12),
+      child: AppCard(
+        onTap: () => _showDetails(item),
+        semanticLabel: title,
+        padding: const EdgeInsets.fromLTRB(Ui.s16, Ui.s12, Ui.s8, Ui.s12),
         child: Row(
           children: [
-            Icon(_severityIcon(severity), color: color),
-            const SizedBox(width: 12),
+            IconTile(_severityIcon(severity), size: 44, color: color),
+            const SizedBox(width: Ui.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    result['possible_issue'] ?? l10n.historyUntitled,
+                    title,
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.bold),
-                    maxLines: 1,
+                        fontSize: Ui.body, fontWeight: FontWeight.w600),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: Ui.s4),
                   if (carLabel != null)
                     Text(
                       carLabel,
-                      style:
-                          const TextStyle(fontSize: 11, color: AppColors.steel),
+                      style: const TextStyle(
+                          fontSize: Ui.secondary, color: Ui.textSecondary),
                     ),
-                  const SizedBox(height: 2),
                   Text(
                     _formatDate(item['timestamp'] as String?),
-                    style:
-                        const TextStyle(fontSize: 11, color: AppColors.muted),
+                    style: const TextStyle(
+                        fontSize: Ui.secondary, color: Ui.textSecondary),
                   ),
+                  const SizedBox(height: Ui.s8),
+                  StatusChip(label: _severityLabel(severity), level: level),
                 ],
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: AppColors.muted),
+              tooltip: l10n.delete,
+              constraints: const BoxConstraints(
+                  minWidth: Ui.minTouch, minHeight: Ui.minTouch),
+              icon: const Icon(Icons.delete_outline, color: Ui.textSecondary),
               onPressed: () => _deleteItem(id),
             ),
           ],

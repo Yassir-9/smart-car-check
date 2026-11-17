@@ -11,7 +11,10 @@ import '../services/car_health_service.dart';
 import '../services/car_service.dart';
 import '../services/latest_diagnosis_service.dart';
 import '../services/maintenance_service.dart';
-import '../theme/app_design_system.dart';
+import '../theme/app_design_system.dart' hide StatusChip;
+import '../theme/app_tokens.dart';
+import '../utils/home_stats.dart';
+import '../widgets/ui/ui.dart';
 import 'before_you_pay_screen.dart';
 import 'car_health_record_screen.dart';
 import 'cars_screen.dart';
@@ -23,8 +26,6 @@ import 'parts_screen.dart';
 import 'settings_screen.dart';
 import 'subscription_screen.dart';
 import '../l10n/app_localizations.dart';
-
-enum _HealthState { good, attention, urgent, unknown }
 
 class HomeV2Screen extends StatefulWidget {
   final bool embedded;
@@ -103,37 +104,6 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     return items;
   }
 
-  (_HealthState, Color) get _health {
-    if (_unresolved
-        .any((i) => i.status == 'returned' || i.status == 'repair_needed')) {
-      return (_HealthState.urgent, AppColors.danger);
-    }
-    if (_unresolved.isNotEmpty ||
-        _reminders
-            .any((r) => !r.isDone && r.dueDate.isBefore(DateTime.now()))) {
-      return (_HealthState.attention, AppColors.warning);
-    }
-    if (_issues.isEmpty) {
-      return (_HealthState.unknown, AppColors.steel);
-    }
-    return (_HealthState.good, AppColors.success);
-  }
-
-  IconData get _healthIcon => switch (_health.$1) {
-        _HealthState.good => Icons.check_circle_outline_rounded,
-        _HealthState.attention => Icons.error_outline_rounded,
-        _HealthState.urgent => Icons.warning_amber_rounded,
-        _ => Icons.help_outline_rounded,
-      };
-
-  String _healthLabel(AppLocalizations l10n, _HealthState state) =>
-      switch (state) {
-        _HealthState.good => l10n.healthGood,
-        _HealthState.attention => l10n.healthAttention,
-        _HealthState.urgent => l10n.healthUrgent,
-        _HealthState.unknown => l10n.healthUnknown,
-      };
-
   Color get _maintenanceColor {
     if (_upcoming.isEmpty) return AppColors.accent;
     final days = _upcoming.first.dueDate.difference(DateTime.now()).inDays;
@@ -148,15 +118,9 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final health = _health;
-    final healthLabel = _healthLabel(l10n, health.$1);
-    final heroHealthColor = health.$1 == _HealthState.unknown
-        ? AppColors.darkTextSecondary
-        : health.$2;
     return Scaffold(
       appBar: AppBar(
-          title: const Text(AppBrand.name,
-              style: TextStyle(fontWeight: FontWeight.w900)),
+          title: const Text(AppBrand.name),
           actions: [
             IconButton(
                 onPressed: () => _open(const SettingsScreen()),
@@ -185,142 +149,15 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                             actionLabel: l10n.addCar,
                             onAction: () => _open(const CarsScreen()))
                       else ...[
-                        Container(
-                            decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: AlignmentDirectional.topStart,
-                                  end: AlignmentDirectional.bottomEnd,
-                                  colors: [
-                                    AppColors.midnight,
-                                    AppColors.navy,
-                                    AppColors.heroBlue,
-                                    AppColors.heroHighlight,
-                                  ],
-                                  stops: [0, .38, .76, 1],
-                                ),
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.xl),
-                                boxShadow: [
-                                  BoxShadow(
-                                      color: AppColors.midnight
-                                          .withValues(alpha: .16),
-                                      blurRadius: 18,
-                                      offset: const Offset(0, 7)),
-                                ]),
-                            child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: Row(children: [
-                                  Container(
-                                      width: 46,
-                                      height: 46,
-                                      decoration: BoxDecoration(
-                                          color: AppColors.surface
-                                              .withValues(alpha: .11),
-                                          borderRadius:
-                                              BorderRadius.circular(14)),
-                                      child: const Icon(
-                                          Icons.directions_car_rounded,
-                                          color: AppColors.surface)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                      child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                        Text(l10n.currentCar,
-                                            style: const TextStyle(
-                                                color: AppColors.surface,
-                                                fontSize: 12)),
-                                        const SizedBox(height: 2),
-                                        Text('${l10n.carBrand(_car!.brand)} ${l10n.localizedCarModel(_car!.model, Localizations.localeOf(context).languageCode)}',
-                                            style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w900,
-                                                color: AppColors.surface)),
-                                        Text(
-                                            '${_car!.year}${_car!.currentMileage == null ? '' : '  •  ${l10n.mileageKm(_car!.currentMileage!)}'}',
-                                            style: TextStyle(
-                                                color: AppColors.surface
-                                                    .withValues(alpha: .72)))
-                                      ])),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 7),
-                                    decoration: BoxDecoration(
-                                      color: heroHealthColor.withValues(
-                                          alpha: .14),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(_healthIcon,
-                                            size: 17, color: heroHealthColor),
-                                        const SizedBox(width: 5),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(l10n.carHealth,
-                                                style: const TextStyle(
-                                                    fontSize: 10,
-                                                    color: AppColors.surface)),
-                                            Text(healthLabel,
-                                                style: TextStyle(
-                                                    color: heroHealthColor,
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.w800)),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                      tooltip: l10n.changeCar,
-                                      color: AppColors.surface,
-                                      onPressed: () =>
-                                          _open(const CarsScreen()),
-                                      icon: const Icon(Icons.swap_horiz))
-                                ]))),
+                        _carCard(l10n),
                         const SizedBox(height: 12),
-                        SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                                style: ButtonStyle(
-                                  backgroundColor:
-                                      WidgetStateProperty.resolveWith((states) {
-                                    if (states.contains(WidgetState.pressed)) {
-                                      return AppColors.ctaPressed;
-                                    }
-                                    if (states.contains(WidgetState.hovered)) {
-                                      return AppColors.ctaHover;
-                                    }
-                                    return AppColors.cta;
-                                  }),
-                                  elevation:
-                                      WidgetStateProperty.resolveWith((states) {
-                                    if (states.contains(WidgetState.pressed)) {
-                                      return 0;
-                                    }
-                                    if (states.contains(WidgetState.hovered)) {
-                                      return 2;
-                                    }
-                                    return 1;
-                                  }),
-                                  shadowColor: WidgetStateProperty.all(
-                                      AppColors.cta.withValues(alpha: .22)),
-                                ),
-                                onPressed: () =>
-                                    _open(const DiagnosisWizardScreen()),
-                                icon: const Icon(Icons.car_repair_outlined),
-                                label: Text(l10n.startCarCheck,
-                                    style: const TextStyle(fontSize: 17)))),
+                        PrimaryButton(
+                            label: l10n.startCarCheck,
+                            icon: Icons.car_repair_outlined,
+                            onPressed: () =>
+                                _open(const DiagnosisWizardScreen())),
                         const SizedBox(height: 18),
-                        Text(l10n.quickActions,
-                            style: const TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.w900)),
+                        SectionTitle(l10n.quickActions),
                         const SizedBox(height: 10),
                         LayoutBuilder(builder: (context, quickConstraints) {
                           const gap = 10.0;
@@ -367,9 +204,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                         ..._pendingRepairWidgets(),
                         _activityOverview(isWide),
                         const SizedBox(height: 18),
-                        Text(l10n.unresolvedIssues,
-                            style: const TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.w900)),
+                        SectionTitle(l10n.unresolvedIssues),
                         const SizedBox(height: 8),
                         if (_unresolved.isEmpty)
                           Card(
@@ -393,12 +228,10 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                                       trailing: i.returnedAfterRepair
                                           ? StatusChip(
                                               label: l10n.returnedAfterRepair,
-                                              color: AppColors.danger)
+                                              level: StatusLevel.danger)
                                           : null)))),
                         const SizedBox(height: 22),
-                        Text(l10n.additionalServices,
-                            style: const TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.w900)),
+                        SectionTitle(l10n.additionalServices),
                         const SizedBox(height: 8),
                         Card(
                             child: Column(children: [
@@ -484,43 +317,135 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
           VoidCallback onTap) =>
       SizedBox(
           width: width,
-          child: _PremiumHoverCard(
+          child: AppCard(
               onTap: onTap,
-              child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                                color: AppSemanticColors.softBackground(
-                                    context, AppColors.accent),
-                                borderRadius: BorderRadius.circular(10)),
-                            child:
-                                Icon(icon, size: 19, color: AppColors.accent)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                              Text(label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800)),
-                              Text(description,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTypography.secondary(context,
-                                      fontSize: 10.5)),
-                            ]))
-                      ]))));
+              semanticLabel: '$label. $description',
+              padding: const EdgeInsets.symmetric(
+                  horizontal: Ui.s12, vertical: Ui.s12),
+              child: Row(children: [
+                IconTile(icon, size: 40),
+                const SizedBox(width: Ui.s8),
+                Expanded(
+                    child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text(description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: Ui.secondary,
+                              color: Ui.textSecondary)),
+                    ]))
+              ])));
+
+  DateTime? get _latestCheckDate {
+    final d = _latestDiagnosis?.date;
+    final i = _issues.isEmpty ? null : _issues.first.date;
+    if (d == null) return i;
+    if (i == null) return d;
+    return i.isAfter(d) ? i : d;
+  }
+
+  Widget _statTile(String value, String label) => Expanded(
+        child: Semantics(
+          container: true,
+          label: '$label: $value',
+          excludeSemantics: true,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: Ui.minTouch + 16),
+            padding: const EdgeInsets.symmetric(
+                horizontal: Ui.s8, vertical: Ui.s12),
+            decoration: BoxDecoration(
+                color: Ui.darkTile,
+                borderRadius: BorderRadius.circular(Ui.rSmall)),
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Ui.onDark,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: Ui.s4),
+                  Text(label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Ui.onDarkMuted, fontSize: Ui.secondary)),
+                ]),
+          ),
+        ),
+      );
+
+  Widget _carCard(AppLocalizations l10n) {
+    final car = _car!;
+    final lang = Localizations.localeOf(context).languageCode;
+    final latest = _latestCheckDate;
+    final name =
+        '${l10n.carBrand(car.brand)} ${l10n.localizedCarModel(car.model, lang)}';
+    return AppCard(
+      dark: true,
+      padding: const EdgeInsets.all(Ui.s16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                  color: Ui.darkTile,
+                  borderRadius: BorderRadius.circular(Ui.rSmall)),
+              child:
+                  const Icon(Icons.directions_car_rounded, color: Ui.onDark)),
+          const SizedBox(width: Ui.s12),
+          Expanded(
+              child:
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(l10n.currentCar,
+                style: const TextStyle(
+                    color: Ui.onDarkMuted, fontSize: Ui.secondary)),
+            Text(name,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Ui.onDark)),
+            Text(
+                '${car.year}${car.currentMileage == null ? '' : '  •  ${l10n.mileageKm(car.currentMileage!)}'}',
+                style: const TextStyle(
+                    color: Ui.onDarkMuted, fontSize: Ui.secondary)),
+          ])),
+          IconButton(
+              tooltip: l10n.changeCar,
+              color: Ui.onDark,
+              constraints: const BoxConstraints(
+                  minWidth: Ui.minTouch, minHeight: Ui.minTouch),
+              onPressed: () => _open(const CarsScreen()),
+              icon: const Icon(Icons.swap_horiz)),
+        ]),
+        const SizedBox(height: Ui.s16),
+        Row(children: [
+          _statTile('${upcomingReminderCount(_reminders)}',
+              l10n.homeStatReminders),
+          const SizedBox(width: Ui.s8),
+          _statTile('${openIssueCount(_issues)}', l10n.homeStatOpenIssues),
+          const SizedBox(width: Ui.s8),
+          _statTile(
+              latest == null
+                  ? l10n.homeStatNone
+                  : relativeDayText(l10n, latest, DateTime.now()),
+              l10n.homeStatLastCheck),
+        ]),
+      ]),
+    );
+  }
 
   String _reminderDisplayTitle(MaintenanceReminder reminder) =>
       reminderDisplayTitle(
@@ -563,9 +488,9 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
             maxLines: 1, overflow: TextOverflow.ellipsis),
         trailing: StatusChip(
             label: issue.status == 'repaired' ? l10n.repaired : l10n.followUp,
-            color: issue.status == 'repaired'
-                ? AppColors.success
-                : AppColors.warning));
+            level: issue.status == 'repaired'
+                ? StatusLevel.ok
+                : StatusLevel.warn));
   }
 
   Widget _activityOverview(bool isWide) {
@@ -607,26 +532,17 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     required VoidCallback onOpen,
     required Widget child,
   }) =>
-      Card(
-          child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _sectionHeader(title, onOpen),
-                    const Divider(height: 10),
-                    child,
-                  ])));
-  Widget _sectionHeader(String title, VoidCallback action) => Row(children: [
-        Expanded(
-            child: Text(title,
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w900))),
-        TextButton(
-            onPressed: action,
-            child: Text(AppLocalizations.of(context).viewAll))
-      ]);
-
+      AppCard(
+          padding: const EdgeInsets.fromLTRB(Ui.s16, Ui.s8, Ui.s16, Ui.s12),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionTitle(title,
+                    actionLabel: AppLocalizations.of(context).viewAll,
+                    onAction: onOpen),
+                const Divider(height: 8),
+                child,
+              ]));
   Widget _serviceIcon(IconData icon, Color color) => Container(
         width: 38,
         height: 38,
@@ -659,61 +575,4 @@ class _CompactEmpty extends StatelessWidget {
           Expanded(child: Text(text, style: AppTypography.secondary(context))),
         ]),
       );
-}
-
-class _PremiumHoverCard extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-  const _PremiumHoverCard({required this.child, required this.onTap});
-
-  @override
-  State<_PremiumHoverCard> createState() => _PremiumHoverCardState();
-}
-
-class _PremiumHoverCardState extends State<_PremiumHoverCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, _hovered ? -1 : 0, 0),
-        decoration: BoxDecoration(
-          color: dark ? AppColors.darkSurface : AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(
-            color: _hovered
-                ? AppColors.accent.withValues(alpha: .32)
-                : (dark ? AppColors.darkBorder : AppColors.border),
-          ),
-          boxShadow: _hovered
-              ? [
-                  BoxShadow(
-                    color:
-                        AppColors.midnight.withValues(alpha: dark ? .18 : .07),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ]
-              : const [],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            hoverColor: AppColors.accent.withValues(alpha: .025),
-            splashColor: AppColors.accent.withValues(alpha: .07),
-            onTap: widget.onTap,
-            child: widget.child,
-          ),
-        ),
-      ),
-    );
-  }
 }

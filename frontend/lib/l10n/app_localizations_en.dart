@@ -2041,4 +2041,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirmAction => 'Confirm';
+
+  @override
+  String get homeStatReminders => 'Upcoming reminders';
+
+  @override
+  String get homeStatOpenIssues => 'Open issues';
+
+  @override
+  String get homeStatLastCheck => 'Last check';
+
+  @override
+  String get homeStatNone => '—';
+
+  @override
+  String get relativeToday => 'Today';
+
+  @override
+  String get relativeYesterday => 'Yesterday';
+
+  @override
+  String relativeDaysAgo(int days) {
+    return '$days days ago';
+  }
 }

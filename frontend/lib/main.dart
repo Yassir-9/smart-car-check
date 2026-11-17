@@ -6,7 +6,7 @@ import 'screens/auth_screen.dart';
 import 'screens/email_verification_screen.dart';
 import 'screens/app_shell.dart';
 import 'screens/onboarding_screen.dart';
-import 'theme/app_design_system.dart';
+import 'theme/app_theme.dart';
 import 'theme_notifier.dart';
 import 'locale_notifier.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -63,8 +63,8 @@ class _CarAiAppState extends State<CarAiApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppUiTheme.light(),
+      darkTheme: AppUiTheme.dark(),
       themeMode: themeNotifier.value ? ThemeMode.dark : ThemeMode.light,
       builder: (context, child) {
         return Directionality(

@@ -7,7 +7,9 @@ import '../l10n/app_localizations.dart';
 import '../models/maintenance_reminder.dart';
 import '../services/maintenance_service.dart';
 import '../services/notification_service.dart';
-import '../theme/app_design_system.dart';
+import '../theme/app_design_system.dart' hide StatusChip;
+import '../theme/app_tokens.dart';
+import '../widgets/ui/ui.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -142,7 +144,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                         direction: DismissDirection.endToStart,
                         onDismissed: (_) => _deleteReminder(reminder),
                         background: Container(
-                          color: AppColors.danger,
+                          color: Ui.dangerText,
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: const Icon(Icons.delete, color: Colors.white),
@@ -150,34 +152,61 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 7),
-                          leading: Icon(
+                          leading: IconTile(
                             reminder.isDone
-                                ? Icons.check_circle
+                                ? Icons.check_circle_outline
                                 : isOverdue
-                                    ? Icons.warning
+                                    ? Icons.warning_amber_rounded
                                     : isSoon
-                                        ? Icons.notifications_active
-                                        : Icons.event,
+                                        ? Icons.notifications_active_outlined
+                                        : Icons.event_outlined,
+                            size: 44,
                             color: reminder.isDone
-                                ? AppColors.success
+                                ? Ui.okText
                                 : isOverdue
-                                    ? AppColors.danger
+                                    ? Ui.dangerText
                                     : isSoon
-                                        ? AppColors.warning
-                                        : AppColors.accent,
+                                        ? Ui.warnText
+                                        : Ui.primaryText,
                           ),
                           title: Text(
                             _displayTitle(reminder),
                             style: TextStyle(
+                              fontWeight: FontWeight.w600,
                               decoration: reminder.isDone
                                   ? TextDecoration.lineThrough
                                   : null,
                             ),
                           ),
-                          subtitle: Text(
-                            daysLeft < 0 && !reminder.isDone
-                                ? reminderStatusText(l10n, reminder.dueDate, now)
-                                : '${reminderStatusText(l10n, reminder.dueDate, now, isDone: reminder.isDone)}${reminder.notes != null ? ' • ${reminder.notes}' : ''}',
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: Ui.s4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                StatusChip(
+                                  label: reminderStatusText(
+                                      l10n, reminder.dueDate, now,
+                                      isDone: reminder.isDone),
+                                  level: reminder.isDone
+                                      ? StatusLevel.ok
+                                      : isOverdue
+                                          ? StatusLevel.danger
+                                          : isSoon
+                                              ? StatusLevel.warn
+                                              : StatusLevel.ok,
+                                ),
+                                if (reminder.notes != null &&
+                                    !(daysLeft < 0 && !reminder.isDone))
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.only(top: Ui.s4),
+                                    child: Text(reminder.notes!,
+                                        style: const TextStyle(
+                                            fontSize: Ui.secondary,
+                                            color: Ui.textSecondary)),
+                                  ),
+                              ],
+                            ),
                           ),
                           trailing: Checkbox(
                             value: reminder.isDone,

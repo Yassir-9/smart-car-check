@@ -3836,6 +3836,48 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تأكيد'**
   String get confirmAction;
+
+  /// No description provided for @homeStatReminders.
+  ///
+  /// In ar, this message translates to:
+  /// **'تذكيرات قادمة'**
+  String get homeStatReminders;
+
+  /// No description provided for @homeStatOpenIssues.
+  ///
+  /// In ar, this message translates to:
+  /// **'أعطال مفتوحة'**
+  String get homeStatOpenIssues;
+
+  /// No description provided for @homeStatLastCheck.
+  ///
+  /// In ar, this message translates to:
+  /// **'آخر فحص'**
+  String get homeStatLastCheck;
+
+  /// No description provided for @homeStatNone.
+  ///
+  /// In ar, this message translates to:
+  /// **'—'**
+  String get homeStatNone;
+
+  /// No description provided for @relativeToday.
+  ///
+  /// In ar, this message translates to:
+  /// **'اليوم'**
+  String get relativeToday;
+
+  /// No description provided for @relativeYesterday.
+  ///
+  /// In ar, this message translates to:
+  /// **'أمس'**
+  String get relativeYesterday;
+
+  /// No description provided for @relativeDaysAgo.
+  ///
+  /// In ar, this message translates to:
+  /// **'قبل {days} يوم'**
+  String relativeDaysAgo(int days);
 }
 
 class _AppLocalizationsDelegate
