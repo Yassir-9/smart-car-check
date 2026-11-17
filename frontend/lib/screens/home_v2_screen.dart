@@ -63,18 +63,25 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
           ? <Map<String, dynamic>>[]
           : await CarHealthService.loadRepairs(car.id);
       final reminders = await MaintenanceService.loadReminders();
-      final latestDiagnosis =
-          car == null ? null : await LatestDiagnosisService.forCar(car);
       if (mounted) {
         setState(() {
           _car = car;
           _allCars = cars;
           _issues = issues;
-          _latestDiagnosis = latestDiagnosis;
           _repairs = repairs;
           _reminders = reminders;
           _loading = false;
         });
+        // Not awaited: the history comes from the server (it can be slow on a
+        // cold start) and must not hold back the first paint of the home screen.
+        final activeCar = car;
+        if (activeCar != null) {
+          LatestDiagnosisService.forCar(activeCar).then((latest) {
+            if (mounted && _car?.id == activeCar.id) {
+              setState(() => _latestDiagnosis = latest);
+            }
+          });
+        }
       }
     } catch (_) {
       if (mounted) {
