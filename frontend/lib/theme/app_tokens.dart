@@ -24,6 +24,8 @@ class Ui {
   static const warnBg = Color(0xFFFEF3C7);
   static const dangerText = Color(0xFF991B1B);
   static const dangerBg = Color(0xFFFEE2E2);
+  static const neutralText = Color(0xFF334155);
+  static const neutralBg = Color(0xFFE2E8F0);
 
   // Text on the dark card
   static const onDark = Color(0xFFFFFFFF);

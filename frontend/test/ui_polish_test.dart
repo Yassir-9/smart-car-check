@@ -7,6 +7,7 @@ import 'package:car_ai_diagnosis/models/vehicle_issue.dart';
 import 'package:car_ai_diagnosis/theme/app_theme.dart';
 import 'package:car_ai_diagnosis/theme/app_tokens.dart';
 import 'package:car_ai_diagnosis/utils/home_stats.dart';
+import 'package:car_ai_diagnosis/utils/reminder_text.dart';
 import 'package:car_ai_diagnosis/utils/western_digits.dart';
 import 'package:car_ai_diagnosis/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,7 @@ Widget host(Widget child, {Locale locale = const Locale('ar')}) => MaterialApp(
     );
 
 void main() {
+  reminderChipTests();
   group('home stats', () {
     test('counts only reminders that are not done', () {
       expect(upcomingReminderCount([]), 0);
@@ -207,6 +209,30 @@ void main() {
           isNot(contains('google_fonts')));
       expect(File('pubspec.lock').readAsStringSync(),
           isNot(contains('google_fonts')));
+    });
+  });
+}
+
+void reminderChipTests() {
+  group('reminder chip level', () {
+    test('only a done reminder is green', () {
+      expect(reminderChipLevel(30, isDone: true), StatusLevel.ok);
+      expect(reminderChipLevel(-5, isDone: true), StatusLevel.ok);
+      expect(reminderChipLevel(30, isDone: false), isNot(StatusLevel.ok));
+    });
+
+    test('boundaries: 15 days grey, 14 amber, today amber, yesterday red', () {
+      expect(reminderChipLevel(15, isDone: false), StatusLevel.neutral);
+      expect(reminderChipLevel(14, isDone: false), StatusLevel.warn);
+      expect(reminderChipLevel(0, isDone: false), StatusLevel.warn);
+      expect(reminderChipLevel(-1, isDone: false), StatusLevel.danger);
+    });
+
+    test('neutral colours are as designed and readable', () {
+      final c = statusColors(StatusLevel.neutral);
+      expect(c.text, const Color(0xFF334155));
+      expect(c.bg, const Color(0xFFE2E8F0));
+      expect(contrast(c.text, c.bg), greaterThanOrEqualTo(4.5));
     });
   });
 }

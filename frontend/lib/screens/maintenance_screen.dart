@@ -134,7 +134,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     final daysLeft = reminderCalendarDays(reminder.dueDate, now);
                     final isOverdue = daysLeft < 0 && !reminder.isDone;
                     final isSoon =
-                        daysLeft >= 0 && daysLeft <= 7 && !reminder.isDone;
+                        daysLeft >= 0 && daysLeft <= 14 && !reminder.isDone;
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -187,13 +187,11 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                                   label: reminderStatusText(
                                       l10n, reminder.dueDate, now,
                                       isDone: reminder.isDone),
-                                  level: reminder.isDone
-                                      ? StatusLevel.ok
-                                      : isOverdue
-                                          ? StatusLevel.danger
-                                          : isSoon
-                                              ? StatusLevel.warn
-                                              : StatusLevel.ok,
+                                  level: reminderChipLevel(daysLeft,
+                                      isDone: reminder.isDone),
+                                  icon: reminder.isDone
+                                      ? null
+                                      : Icons.schedule,
                                 ),
                                 if (reminder.notes != null &&
                                     !(daysLeft < 0 && !reminder.isDone))
