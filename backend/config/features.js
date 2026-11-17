@@ -12,6 +12,10 @@ const isAskExpertEnabled = (env) => flag('ASK_EXPERT_ENABLED', env);
 const isPartsGuideEnabled = (env) => flag('PARTS_GUIDE_ENABLED', env);
 // AI + web search for stores/prices/links (/parts/external-search, /obd/part-search): can invent results.
 const isExternalPartSearchEnabled = (env) => flag('EXTERNAL_PART_SEARCH_ENABLED', env);
+// PATCH /history/:id/feedback ("was this diagnosis accurate?"). No live screen calls it:
+// the only caller is the unused legacy HomeScreen. It writes feedback and copies the
+// diagnosis text to a global collection, so it stays off unless switched on.
+const isDiagnosisFeedbackEnabled = (env) => flag('DIAGNOSIS_FEEDBACK_ENABLED', env);
 
 // Express middleware: reject the request with 403 + FEATURE_DISABLED when the
 // feature is off. `isEnabled` is injectable for tests.
@@ -28,5 +32,6 @@ module.exports = {
   isAskExpertEnabled,
   isPartsGuideEnabled,
   isExternalPartSearchEnabled,
+  isDiagnosisFeedbackEnabled,
   requireFeature,
 };
