@@ -165,6 +165,14 @@ void main() {
       expect(westernDigits(''), '');
     });
 
+    test('Arabic dates use the Arabic comma, English keeps the Latin one', () {
+      expect(localizedDateText('Mon, 16 نوفمبر - 10:19', 'ar'),
+          'Mon، 16 نوفمبر - 10:19');
+      expect(localizedDateText('الاثنين, ١٦ نوفمبر', 'ar'), 'الاثنين، 16 نوفمبر');
+      expect(localizedDateText('Mon, Nov 16 - 10:19 AM', 'en'),
+          'Mon, Nov 16 - 10:19 AM');
+    });
+
     testWidgets('direction aware arrows mirror in Arabic', (tester) async {
       await tester.pumpWidget(host(const Icon(Icons.arrow_forward)));
       expect(Icons.arrow_forward.matchTextDirection, isTrue);

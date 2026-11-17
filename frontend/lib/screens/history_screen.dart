@@ -206,7 +206,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
         TimeOfDay.fromDateTime(date),
         alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
       );
-      return westernDigits('$formattedDate - $formattedTime');
+      return localizedDateText('$formattedDate - $formattedTime',
+          Localizations.localeOf(context).languageCode);
     } catch (_) {
       return isoDate;
     }

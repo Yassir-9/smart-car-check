@@ -13,3 +13,9 @@ String westernDigits(String text) {
   }
   return out.toString();
 }
+
+/// Western digits plus, for Arabic, the Arabic comma "،" instead of ",".
+String localizedDateText(String text, String languageCode) {
+  final digits = westernDigits(text);
+  return languageCode == 'ar' ? digits.replaceAll(',', '،') : digits;
+}
