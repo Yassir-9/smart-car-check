@@ -2129,8 +2129,26 @@ abstract class AppLocalizations {
   /// No description provided for @overdueDays.
   ///
   /// In ar, this message translates to:
-  /// **'متأخر منذ {days} يوم'**
+  /// **'متأخر {days} يوم'**
   String overdueDays(int days);
+
+  /// No description provided for @reminderToday.
+  ///
+  /// In ar, this message translates to:
+  /// **'اليوم'**
+  String get reminderToday;
+
+  /// No description provided for @reminderDone.
+  ///
+  /// In ar, this message translates to:
+  /// **'تم'**
+  String get reminderDone;
+
+  /// No description provided for @reminderTomorrow.
+  ///
+  /// In ar, this message translates to:
+  /// **'غداً'**
+  String get reminderTomorrow;
 
   /// No description provided for @daysRemaining.
   ///

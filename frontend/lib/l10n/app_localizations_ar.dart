@@ -1074,8 +1074,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String overdueDays(int days) {
-    return 'متأخر منذ $days يوم';
+    return 'متأخر $days يوم';
   }
+
+  @override
+  String get reminderToday => 'اليوم';
+
+  @override
+  String get reminderDone => 'تم';
+
+  @override
+  String get reminderTomorrow => 'غداً';
 
   @override
   String daysRemaining(int days) {

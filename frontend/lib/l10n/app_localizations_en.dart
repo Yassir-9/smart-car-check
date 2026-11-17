@@ -1096,6 +1096,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get reminderToday => 'Today';
+
+  @override
+  String get reminderDone => 'Done';
+
+  @override
+  String get reminderTomorrow => 'Tomorrow';
+
+  @override
   String daysRemaining(int days) {
     return '$days day(s) remaining';
   }

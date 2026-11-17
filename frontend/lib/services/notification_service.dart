@@ -5,6 +5,10 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tzdata;
 
 class NotificationService {
+  /// Monochrome white drawable (android/app/src/main/res/drawable): the
+  /// colourful launcher icon renders as a blank square in the status bar.
+  static const String _smallIcon = 'ic_stat_notification';
+
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
@@ -12,7 +16,7 @@ class NotificationService {
     if (!_isSupportedPlatform) return;
     tzdata.initializeTimeZones();
     const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings(_smallIcon);
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -55,6 +59,7 @@ class NotificationService {
       'maintenance_reminders',
       'تذكيرات الصيانة',
       channelDescription: 'تنبيهات مواعيد الصيانة والوثائق الرسمية',
+      icon: _smallIcon,
       importance: Importance.high,
       priority: Priority.high,
     );

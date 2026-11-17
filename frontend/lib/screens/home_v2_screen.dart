@@ -1,4 +1,6 @@
 import '../config/feature_flags.dart';
+import '../utils/bidi_text.dart';
+import '../utils/reminder_title.dart';
 import '../utils/localized_vehicle_text.dart';
 import 'package:flutter/material.dart';
 import '../config/app_brand.dart';
@@ -7,6 +9,7 @@ import '../models/maintenance_reminder.dart';
 import '../models/vehicle_issue.dart';
 import '../services/car_health_service.dart';
 import '../services/car_service.dart';
+import '../services/latest_diagnosis_service.dart';
 import '../services/maintenance_service.dart';
 import '../theme/app_design_system.dart';
 import 'before_you_pay_screen.dart';
@@ -35,6 +38,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
   CarModel? _car;
   List<CarModel> _allCars = [];
   List<VehicleIssue> _issues = [];
+  LatestDiagnosis? _latestDiagnosis;
   List<MaintenanceReminder> _reminders = [];
   List<Map<String, dynamic>> _repairs = [];
 
@@ -44,7 +48,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceHistory = false}) async {
     try {
       final cars = await CarService.loadCars(),
           active = await CarService.getActiveCarId();
@@ -68,6 +72,16 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
           _reminders = reminders;
           _loading = false;
         });
+        // Not awaited: the history comes from the server (it can be slow on a
+        // cold start) and must not hold back the first paint of the home screen.
+        final activeCar = car;
+        if (activeCar != null) {
+          LatestDiagnosisService.forCarCached(activeCar, force: forceHistory).then((latest) {
+            if (mounted && _car?.id == activeCar.id) {
+              setState(() => _latestDiagnosis = latest);
+            }
+          });
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -151,7 +165,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
       body: LayoutBuilder(builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 820;
         return RefreshIndicator(
-          onRefresh: _load,
+          onRefresh: () => _load(forceHistory: true),
           child: ListView(children: [
             Center(
               child: ConstrainedBox(
@@ -508,29 +522,52 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
                             ]))
                       ]))));
 
-  String _reminderDisplayTitle(MaintenanceReminder reminder) {
-    final l10n = AppLocalizations.of(context);
-    final id = reminder.id;
-    String? type;
-    if (id.endsWith('_registration')) {
-      type = l10n.registrationExpiry;
-    } else if (id.endsWith('_insurance')) {
-      type = l10n.insuranceExpiry;
-    } else if (id.endsWith('_inspection')) {
-      type = l10n.inspectionExpiry;
-    }
-    if (type == null) return reminder.title;
+  String _reminderDisplayTitle(MaintenanceReminder reminder) =>
+      reminderDisplayTitle(
+          l10n: AppLocalizations.of(context),
+          languageCode: Localizations.localeOf(context).languageCode,
+          reminder: reminder,
+          cars: _allCars);
 
-    final carId = id.substring(0, id.lastIndexOf('_'));
-    final cars = _allCars;
-    for (final car in cars) {
-      if (car.id == carId) {
-        final lang = Localizations.localeOf(context).languageCode;
-        return '$type - ${l10n.carBrand(car.brand)} ${l10n.localizedCarModel(car.model, lang)} - ${car.year}';
-      }
+  /// The newest of: the latest saved diagnosis (History source) and the latest
+  /// recorded vehicle issue (Firestore); empty state only when both are absent.
+  Widget _latestCheckChild(AppLocalizations l10n) {
+    final diagnosis = _latestDiagnosis;
+    final issue = _issues.isEmpty ? null : _issues.first;
+    final useDiagnosis =
+        diagnosis != null && (issue == null || !issue.date.isAfter(diagnosis.date));
+    if (useDiagnosis) {
+      final d = diagnosis.date.toLocal();
+      return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.fact_check_outlined, color: AppColors.accent),
+          title: Text(bidiText(context, diagnosis.title),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text('${d.year}/${d.month}/${d.day}'));
     }
-    return reminder.title;
+    if (issue == null) {
+      return _CompactEmpty(
+          icon: Icons.fact_check_outlined,
+          text: l10n.noPreviousCheck,
+          color: AppColors.unknown);
+    }
+    return ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(issue.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(issue.obdCodes.join(l10n.localeName == 'ar' ? '، ' : ', '),
+            maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: StatusChip(
+            label: issue.status == 'repaired' ? l10n.repaired : l10n.followUp,
+            color: issue.status == 'repaired'
+                ? AppColors.success
+                : AppColors.warning));
   }
+
   Widget _activityOverview(bool isWide) {
     final l10n = AppLocalizations.of(context);
     final maintenance = _overviewSection(
@@ -552,29 +589,7 @@ class _HomeV2ScreenState extends State<HomeV2Screen> {
     final latest = _overviewSection(
       title: l10n.latestCheck,
       onOpen: () => _open(const HistoryScreen()),
-      child: _issues.isEmpty
-          ? _CompactEmpty(
-              icon: Icons.fact_check_outlined,
-              text: l10n.noPreviousCheck,
-              color: AppColors.unknown)
-          : ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(_issues.first.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text(
-                  _issues.first.obdCodes
-                      .join(l10n.localeName == 'ar' ? '، ' : ', '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              trailing: StatusChip(
-                  label: _issues.first.status == 'repaired'
-                      ? l10n.repaired
-                      : l10n.followUp,
-                  color: _issues.first.status == 'repaired'
-                      ? AppColors.success
-                      : AppColors.warning)),
+      child: _latestCheckChild(l10n),
     );
     if (!isWide) {
       return Column(
