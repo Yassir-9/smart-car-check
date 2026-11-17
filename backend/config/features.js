@@ -5,6 +5,9 @@ function flag(name, env = process.env) {
 }
 
 const isSubscriptionsEnabled = (env) => flag('SUBSCRIPTIONS_ENABLED', env);
+// Public marketplace listing (GET /parts, no login). The live app does not call it
+// (the marketplace UI is hidden by FeatureFlags.marketplaceEnabled=false).
+const isMarketplaceEnabled = (env) => flag('MARKETPLACE_ENABLED', env);
 const isMarketplaceWritesEnabled = (env) => flag('MARKETPLACE_WRITES_ENABLED', env);
 // /ask-expert is not used by the current app (only a dead legacy screen calls it).
 const isAskExpertEnabled = (env) => flag('ASK_EXPERT_ENABLED', env);
@@ -28,6 +31,7 @@ function requireFeature(isEnabled, localizedError) {
 
 module.exports = {
   isSubscriptionsEnabled,
+  isMarketplaceEnabled,
   isMarketplaceWritesEnabled,
   isAskExpertEnabled,
   isPartsGuideEnabled,
