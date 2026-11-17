@@ -7,6 +7,7 @@ import 'package:car_ai_diagnosis/models/vehicle_issue.dart';
 import 'package:car_ai_diagnosis/theme/app_theme.dart';
 import 'package:car_ai_diagnosis/theme/app_tokens.dart';
 import 'package:car_ai_diagnosis/utils/home_stats.dart';
+import 'package:car_ai_diagnosis/utils/western_digits.dart';
 import 'package:car_ai_diagnosis/widgets/ui/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -155,6 +156,13 @@ void main() {
   });
 
   group('rtl and digits', () {
+    test('Arabic-Indic and Persian digits become Western digits', () {
+      expect(westernDigits('الاثنين، ١٦ نوفمبر - ١٠:١٩ م'),
+          'الاثنين، 16 نوفمبر - 10:19 م');
+      expect(westernDigits('۱۲۳ abc 456'), '123 abc 456');
+      expect(westernDigits(''), '');
+    });
+
     testWidgets('direction aware arrows mirror in Arabic', (tester) async {
       await tester.pumpWidget(host(const Icon(Icons.arrow_forward)));
       expect(Icons.arrow_forward.matchTextDirection, isTrue);

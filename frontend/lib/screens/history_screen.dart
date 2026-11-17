@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_design_system.dart' hide StatusChip;
 import '../theme/app_tokens.dart';
 import '../utils/bidi_text.dart';
+import '../utils/western_digits.dart';
 import '../widgets/ui/ui.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -205,7 +206,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         TimeOfDay.fromDateTime(date),
         alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
       );
-      return '$formattedDate - $formattedTime';
+      return westernDigits('$formattedDate - $formattedTime');
     } catch (_) {
       return isoDate;
     }
